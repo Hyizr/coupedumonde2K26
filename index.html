@@ -1876,7 +1876,8 @@ function renderCF(){
 // Fonctionne automatiquement sur Vercel (requêtes navigateur)
 // Token gratuit: https://www.football-data.org/client/register
 // ============================================================
-var FD_TOKEN='3a137ece784443cca360d8fc40435b73';
+var FD_TOKEN='3a137ece784443cca360d8fc40435b73'; // football-data.org (scores live)
+var AF_TOKEN='f0df5fe54c4c5f63c8cb2ee1f3e58acb'; // api-football.com (lineups + stats) → https://dashboard.api-football.com
 var fdData={};
 var fdRunning=false;
 var fdTimer=null;
@@ -2489,79 +2490,161 @@ function closeMatchModal() {
 var matchStatsCache = {};
 async function fetchMatchStats(m, t1, t2, sq1, sq2, sc, ld, probs) {
   try {
-    // Get all WC matches to find this specific match ID
-    var r = await fetch('https://api.football-data.org/v4/competitions/WC/matches', {
-      headers: { 'X-Auth-Token': FD_TOKEN }
-    });
+    // ── api-football.com: compositions + stats détaillées ──────────────
+    if (AF_TOKEN && AF_TOKEN !== 'VOTRE_CLE_API_FOOTBALL') {
+      await fetchAFStats(m, t1, t2, sq1, sq2, sc, ld, probs);
+      return;
+    }
+    // ── football-data.org fallback (scores uniquement, pas de lineups) ──
+    await fetchFDStats(m, t1, t2, sq1, sq2, sc, ld, probs);
+  } catch(e) { /* silent */ }
+}
+
+async function fetchAFStats(m, t1, t2, sq1, sq2, sc, ld, probs) {
+  try {
+    // WC 2026 = league 1, season 2026 in api-football
+    var r = await fetch(
+      'https://v3.football.api-sports.io/fixtures?league=1&season=2026',
+      { headers: { 'x-apisports-key': AF_TOKEN } }
+    );
     if (!r.ok) return;
     var data = await r.json();
-    var fdMatch = (data.matches || []).find(function(fm) {
-      var h = mapFDTeam(fm.homeTeam && fm.homeTeam.name || '');
-      var a = mapFDTeam(fm.awayTeam && fm.awayTeam.name || '');
+    var fixtures = data.response || [];
+
+    // Find our match
+    var fix = fixtures.find(function(f) {
+      var h = mapAFTeam(f.teams && f.teams.home && f.teams.home.name || '');
+      var a = mapAFTeam(f.teams && f.teams.away && f.teams.away.name || '');
       return (h === m.t1 && a === m.t2) || (h === m.t2 && a === m.t1);
     });
-    if (!fdMatch) return;
+    if (!fix) return;
 
-    // Fetch detailed match
-    var r2 = await fetch('https://api.football-data.org/v4/matches/' + fdMatch.id, {
-      headers: { 'X-Auth-Token': FD_TOKEN }
-    });
-    if (!r2.ok) return;
-    var detail = await r2.json();
+    var fixId = fix.fixture && fix.fixture.id;
+    var isHome = mapAFTeam(fix.teams.home.name) === m.t1;
 
-    // Update modal with real data
-    var isHome = (mapFDTeam(fdMatch.homeTeam.name) === m.t1);
-    var realSc = null;
-    if (detail.score && detail.score.fullTime && detail.score.fullTime.home !== null) {
-      var hg = detail.score.fullTime.home, ag = detail.score.fullTime.away;
-      realSc = isHome ? [hg, ag] : [ag, hg];
-    }
-    var goals = (detail.goals || []).map(function(g) {
-      var forHome = g.team && mapFDTeam(g.team.name) === m.t1;
-      return { minute: g.minute, scorer: g.scorer && g.scorer.name || '?', team: forHome ? 't1' : 't2', type: g.type };
-    });
-    var subs = (detail.substitutions || []).map(function(s) {
-      var forT1 = s.team && mapFDTeam(s.team.name) === m.t1;
-      return { minute: s.minute, playerOut: s.playerOut && s.playerOut.name || '?', playerIn: s.playerIn && s.playerIn.name || '?', team: forT1 ? 't1' : 't2' };
-    });
+    // Fetch detailed fixture: lineups + stats + events
+    var [rL, rS, rE] = await Promise.all([
+      fetch('https://v3.football.api-sports.io/fixtures/lineups?fixture='+fixId, { headers: {'x-apisports-key':AF_TOKEN} }),
+      fetch('https://v3.football.api-sports.io/fixtures/statistics?fixture='+fixId, { headers: {'x-apisports-key':AF_TOKEN} }),
+      fetch('https://v3.football.api-sports.io/fixtures/events?fixture='+fixId, { headers: {'x-apisports-key':AF_TOKEN} }),
+    ]);
+
+    var lineupData = rL.ok ? (await rL.json()).response : [];
+    var statsData  = rS.ok ? (await rS.json()).response : [];
+    var eventsData = rE.ok ? (await rE.json()).response : [];
+
+    // ── Parse lineups ──
     var lineup1 = [], lineup2 = [];
-    if (detail.lineups) {
-      detail.lineups.forEach(function(l) {
-        var forT1 = l.team && mapFDTeam(l.team.name) === m.t1;
-        var players = (l.startXI || []).map(function(p) { return p.player && p.player.name || '?'; });
-        if (forT1) lineup1 = players; else lineup2 = players;
-      });
-    }
+    var detail = { lineups: [], goals: [], substitutions: [] };
 
-    // Extract and cache real stats from API response
-    if (detail.statistics && detail.statistics.length >= 2) {
-      var s1 = detail.statistics.find(function(s){ return mapFDTeam(s.team&&s.team.name||'')===m.t1; }) || {statistics:[]};
-      var s2 = detail.statistics.find(function(s){ return mapFDTeam(s.team&&s.team.name||'')===m.t2; }) || {statistics:[]};
-      function getStat(arr, type) {
-        var found = arr.find(function(x){return x.type===type;}); 
-        return found ? found.value : undefined;
-      }
+    lineupData.forEach(function(l) {
+      var teamId = mapAFTeam(l.team && l.team.name || '');
+      var forT1 = teamId === m.t1;
+      var players = (l.startXI || []).map(function(p){ return p.player && p.player.name || '?'; });
+      // Build detail.lineups compatible format
+      detail.lineups.push({
+        team: { name: l.team && l.team.name },
+        formation: l.formation || '4-3-3',
+        startXI: (l.startXI || []).map(function(p){ return { player: { name: p.player && p.player.name, position: p.player && p.player.pos, shirtNumber: p.player && p.player.number } }; }),
+        bench:   (l.substitutes || []).map(function(p){ return { player: { name: p.player && p.player.name, shirtNumber: p.player && p.player.number } }; }),
+      });
+      if (forT1) lineup1 = players; else lineup2 = players;
+    });
+
+    // ── Parse stats ──
+    function getAFStat(arr, label) {
+      var found = arr.find(function(x){ return x.type === label; });
+      if (!found) return undefined;
+      return found.value !== null ? found.value : undefined;
+    }
+    if (statsData.length >= 2) {
+      var s1 = statsData.find(function(s){ return mapAFTeam(s.team&&s.team.name||'')===m.t1; }) || {statistics:[]};
+      var s2 = statsData.find(function(s){ return mapAFTeam(s.team&&s.team.name||'')===m.t2; }) || {statistics:[]};
       matchStatsCache[m.id] = {
-        xg1: getStat(s1.statistics,'Expected Goals (xG)'),
-        xg2: getStat(s2.statistics,'Expected Goals (xG)'),
-        p1:  getStat(s1.statistics,'Ball Possession'),
-        p2:  getStat(s2.statistics,'Ball Possession'),
-        sh1: getStat(s1.statistics,'Total Shots'),
-        sh2: getStat(s2.statistics,'Total Shots'),
-        sot1:getStat(s1.statistics,'Shots on Goal'),
-        sot2:getStat(s2.statistics,'Shots on Goal'),
-        cor1:getStat(s1.statistics,'Corner Kicks'),
-        cor2:getStat(s2.statistics,'Corner Kicks'),
-        foul1:getStat(s1.statistics,'Fouls'),
-        foul2:getStat(s2.statistics,'Fouls'),
-        yc1: getStat(s1.statistics,'Yellow Cards'),
-        yc2: getStat(s2.statistics,'Yellow Cards'),
+        xg1:  getAFStat(s1.statistics,'expected_goals'),
+        xg2:  getAFStat(s2.statistics,'expected_goals'),
+        p1:   getAFStat(s1.statistics,'Ball Possession'),
+        p2:   getAFStat(s2.statistics,'Ball Possession'),
+        sh1:  getAFStat(s1.statistics,'Total Shots'),
+        sh2:  getAFStat(s2.statistics,'Total Shots'),
+        sot1: getAFStat(s1.statistics,'Shots on Goal'),
+        sot2: getAFStat(s2.statistics,'Shots on Goal'),
+        cor1: getAFStat(s1.statistics,'Corner Kicks'),
+        cor2: getAFStat(s2.statistics,'Corner Kicks'),
+        foul1:getAFStat(s1.statistics,'Fouls'),
+        foul2:getAFStat(s2.statistics,'Fouls'),
+        yc1:  getAFStat(s1.statistics,'Yellow Cards'),
+        yc2:  getAFStat(s2.statistics,'Yellow Cards'),
       };
     }
 
-    renderMatchModalContent(m, t1, t2, realSc || sc, detail.status === 'IN_PLAY' ? detail : ld, probs, sq1, sq2, goals, subs, lineup1, lineup2, detail);
-  } catch(e) { /* silent */ }
+    // ── Parse events (goals + subs) ──
+    eventsData.forEach(function(ev) {
+      var forT1 = mapAFTeam(ev.team&&ev.team.name||'') === m.t1;
+      var minute = (ev.time&&ev.time.elapsed||0) + (ev.time&&ev.time.extra?'+'+ev.time.extra:'');
+      if (ev.type === 'Goal') {
+        detail.goals.push({ minute: minute, scorer: ev.player&&ev.player.name||'?', team: forT1?'t1':'t2', type: ev.detail==='Penalty'?'PENALTY':ev.detail==='Own Goal'?'OWN_GOAL':'' });
+      } else if (ev.type === 'subst') {
+        detail.substitutions.push({ minute: minute, playerIn: ev.player&&ev.player.name||'?', playerOut: ev.assist&&ev.assist.name||'?', team: forT1?'t1':'t2' });
+      }
+    });
+
+    // ── Score ──
+    var realSc = null;
+    if (fix.score && fix.score.fulltime && fix.score.fulltime.home !== null) {
+      var hg = fix.score.fulltime.home, ag = fix.score.fulltime.away;
+      realSc = isHome ? [hg,ag] : [ag,hg];
+    }
+
+    renderMatchModalContent(m, t1, t2, realSc||sc, ld, probs, sq1, sq2, detail.goals, detail.substitutions, lineup1, lineup2, detail);
+  } catch(e) { console.warn('api-football error:', e.message); }
 }
+
+// Team name mapping for api-football (slightly different names)
+var AF_TEAMS = Object.assign({}, FD_TEAMS, {
+  'Mexico':'mex','South Africa':'rsa','Korea Republic':'kor','South Korea':'kor',
+  'Czech Republic':'cze','Czechia':'cze','Bosnia and Herzegovina':'bih','Switzerland':'sui',
+  'Brazil':'bra','Morocco':'mar','Scotland':'sco','Haiti':'hai',
+  'United States':'usa','USA':'usa','Paraguay':'par','Turkey':'tur','Turkiye':'tur',
+  'Australia':'aus','Germany':'ger','Ecuador':'ecu','Ivory Coast':'civ',
+  "Cote d'Ivoire":"civ",'Netherlands':'ned','Japan':'jpn','Sweden':'swe',
+  'Tunisia':'tun','Belgium':'bel','Egypt':'egy','Iran':'irn','IR Iran':'irn',
+  'New Zealand':'nzl','Spain':'esp','Cape Verde':'cpv','Saudi Arabia':'sau',
+  'Uruguay':'uru','France':'fra','Senegal':'sen','Norway':'nor','Iraq':'irq',
+  'Argentina':'arg','Austria':'aut','Algeria':'alg','Jordan':'jor',
+  'Portugal':'por','Colombia':'col','Uzbekistan':'uzb','DR Congo':'cod',
+  'England':'eng','Croatia':'cro','Panama':'pan','Ghana':'gha',
+  'Curacao':'cur','Curaçao':'cur','Canada':'can','New Zealand':'nzl',
+});
+function mapAFTeam(name){ return AF_TEAMS[name] || mapFDTeam(name) || ''; }
+
+async function fetchFDStats(m, t1, t2, sq1, sq2, sc, ld, probs) {
+  // Original football-data.org fetch (scores + events only, no lineups)
+  try {
+    var r = await fetch('https://api.football-data.org/v4/competitions/WC/matches', { headers: {'X-Auth-Token':FD_TOKEN} });
+    if (!r.ok) return;
+    var data = await r.json();
+    var fdMatch = (data.matches||[]).find(function(fm){
+      var h = mapFDTeam(fm.homeTeam&&fm.homeTeam.name||'');
+      var a = mapFDTeam(fm.awayTeam&&fm.awayTeam.name||'');
+      return (h===m.t1&&a===m.t2)||(h===m.t2&&a===m.t1);
+    });
+    if (!fdMatch) return;
+    var r2 = await fetch('https://api.football-data.org/v4/matches/'+fdMatch.id, { headers: {'X-Auth-Token':FD_TOKEN} });
+    if (!r2.ok) return;
+    var detail = await r2.json();
+    var isHome = mapFDTeam(fdMatch.homeTeam.name)===m.t1;
+    var realSc = null;
+    if (detail.score&&detail.score.fullTime&&detail.score.fullTime.home!==null) {
+      var hg=detail.score.fullTime.home, ag=detail.score.fullTime.away;
+      realSc = isHome?[hg,ag]:[ag,hg];
+    }
+    var goals = (detail.goals||[]).map(function(g){ var forHome=g.team&&mapFDTeam(g.team.name)===m.t1; return {minute:g.minute, scorer:g.scorer&&g.scorer.name||'?', team:forHome?'t1':'t2', type:g.type}; });
+    var subs  = (detail.substitutions||[]).map(function(s){ var ft=s.team&&mapFDTeam(s.team.name)===m.t1; return {minute:s.minute, playerOut:s.playerOut&&s.playerOut.name||'?', playerIn:s.playerIn&&s.playerIn.name||'?', team:ft?'t1':'t2'}; });
+    renderMatchModalContent(m, t1, t2, realSc||sc, ld, probs, sq1, sq2, goals, subs, [], [], detail);
+  } catch(e) {}
+}
+
 
 function renderMatchModalContent(m, t1, t2, sc, ld, probs, sq1, sq2, goals, subs, lineup1, lineup2, detail) {
   goals = goals || [];

@@ -1902,10 +1902,8 @@ var FD_TEAMS={
 function mapFDTeam(name){return FD_TEAMS[name]||'';}
 
 async function fetchLive(){
-  if(FD_TOKEN==='VOTRE_TOKEN_ICI') return;
   try{
-    // APRÈS
-      var r = await fetch('/api/live');
+    var r = await fetch('/api/live');
     
     if(!r.ok) return;
     var data=await r.json();
@@ -1916,9 +1914,18 @@ async function fetchLive(){
       if(!h||!a) return;
       var sched=SCHEDULE.find(function(s){return(s.t1===h&&s.t2===a)||(s.t1===a&&s.t2===h);});
       if(!sched) return;
-      var hg=m.score&&m.score.fullTime&&m.score.fullTime.home!==null?m.score.fullTime.home:null;
-      var ag=m.score&&m.score.fullTime&&m.score.fullTime.away!==null?m.score.fullTime.away:null;
-      if(hg===null) return;
+      var sc=m.score;
+      var hg=null, ag=null;
+      if(m.status==='FINISHED'){
+        hg=sc&&sc.fullTime&&sc.fullTime.home!==null?sc.fullTime.home:null;
+        ag=sc&&sc.fullTime&&sc.fullTime.away!==null?sc.fullTime.away:null;
+      } else {
+        hg=sc&&sc.regularTime&&sc.regularTime.home!==null?sc.regularTime.home
+          :(sc&&sc.halfTime&&sc.halfTime.home!==null?sc.halfTime.home:null);
+        ag=sc&&sc.regularTime&&sc.regularTime.away!==null?sc.regularTime.away
+          :(sc&&sc.halfTime&&sc.halfTime.away!==null?sc.halfTime.away:null);
+      }
+      if(hg===null||ag===null) return;
       var isHome=(sched.t1===h);
       fdData[sched.id]={status:m.status,minute:m.minute,s1:isHome?hg:ag,s2:isHome?ag:hg};
       if(m.status==='FINISHED'){
@@ -1946,7 +1953,7 @@ async function fetchLive(){
       }
     });
     if(changed) renderCF();
-  }catch(e){/* silent */}
+  }catch(e){ console.error('fetchLive error:', e); }
 }
 
 function startLiveFetch(){

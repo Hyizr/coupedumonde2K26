@@ -1876,7 +1876,7 @@ function renderCF(){
 // Fonctionne automatiquement sur Vercel (requêtes navigateur)
 // Token gratuit: https://www.football-data.org/client/register
 // ============================================================
-var FD_TOKEN='3a137ece784443cca360d8fc40435b73'; // football-data.org (scores live)
+
 var AF_TOKEN='f0df5fe54c4c5f63c8cb2ee1f3e58acb'; // api-football.com (lineups + stats) → https://dashboard.api-football.com
 var fdData={};
 var fdRunning=false;
@@ -1904,10 +1904,9 @@ function mapFDTeam(name){return FD_TEAMS[name]||'';}
 async function fetchLive(){
   if(FD_TOKEN==='VOTRE_TOKEN_ICI') return;
   try{
-    var r=await fetch(
-      'https://api.football-data.org/v4/competitions/WC/matches?status=IN_PLAY,PAUSED,FINISHED',
-      {headers:{'X-Auth-Token':FD_TOKEN}}
-    );
+    // APRÈS
+      var r = await fetch('/api/live');
+    
     if(!r.ok) return;
     var data=await r.json();
     var changed=false;

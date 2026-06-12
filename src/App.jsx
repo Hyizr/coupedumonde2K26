@@ -1066,6 +1066,8 @@ export default function App(){
           </nav>
         </div>
       
+      </header>
+
       {/* Menu mobile burger — overlay */}
       {menuOpen&&(
         <div style={{position:"fixed",top:0,left:0,right:0,bottom:0,zIndex:99,background:"rgba(0,0,0,0.5)"}} onClick={()=>setMenuOpen(false)}>
@@ -1096,7 +1098,7 @@ export default function App(){
             </div>
           </div>
         </div>
-      )}</header>
+      )}
 
       {/* MAIN */}
       <main style={{maxWidth:1200,margin:"0 auto",padding:"clamp(12px,3vw,28px) clamp(10px,3vw,20px)"}}>

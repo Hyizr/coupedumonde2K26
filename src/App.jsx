@@ -47,6 +47,33 @@ function matchTeam(apiName, frName) {
   return false;
 }
 
+// Mapping noms football-data.org (anglais) → noms français du site
+const EN_TO_FR = {
+  "Mexico":"Mexique","South Africa":"Afrique du Sud","Korea Republic":"Corée du Sud",
+  "Czech Republic":"République tchèque","Czechia":"République tchèque",
+  "Canada":"Canada","Bosnia and Herzegovina":"Bosnie-Herzégovine",
+  "Qatar":"Qatar","Switzerland":"Suisse","Brazil":"Brésil","Morocco":"Maroc",
+  "Haiti":"Haïti","Scotland":"Écosse","United States":"États-Unis","USA":"États-Unis",
+  "Paraguay":"Paraguay","Australia":"Australie","Türkiye":"Turquie","Turkey":"Turquie",
+  "Germany":"Allemagne","Curaçao":"Curaçao","Ivory Coast":"Côte d'Ivoire",
+  "Ecuador":"Équateur","Netherlands":"Pays-Bas","Japan":"Japon","Sweden":"Suède",
+  "Tunisia":"Tunisie","Belgium":"Belgique","Egypt":"Égypte","Iran":"Iran",
+  "New Zealand":"Nouvelle-Zélande","Spain":"Espagne","Cape Verde":"Cap-Vert",
+  "Saudi Arabia":"Arabie Saoudite","Uruguay":"Uruguay","France":"France",
+  "Senegal":"Sénégal","Iraq":"Irak","Norway":"Norvège","Argentina":"Argentine",
+  "Algeria":"Algérie","Austria":"Autriche","Jordan":"Jordanie","Portugal":"Portugal",
+  "DR Congo":"RD Congo","Uzbekistan":"Ouzbékistan","Colombia":"Colombie",
+  "England":"Angleterre","Croatia":"Croatie","Ghana":"Ghana","Panama":"Panama",
+  "South Korea":"Corée du Sud","Korea DPR":"Corée du Nord"
+};
+
+// Statuts football-data.org → format interne
+const FD_STATUS = {
+  "SCHEDULED":"scheduled","TIMED":"scheduled","IN_PLAY":"1H","PAUSED":"HT",
+  "FINISHED":"FT","AWARDED":"FT","CANCELLED":"cancelled","POSTPONED":"postponed"
+};
+
+
 
 const FLAGS = {
   "France": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzIDIiPjxyZWN0IHdpZHRoPSIxIiBoZWlnaHQ9IjIiIGZpbGw9IiMwMDIzOTUiLz48cmVjdCB4PSIxIiB3aWR0aD0iMSIgaGVpZ2h0PSIyIiBmaWxsPSIjZmZmIi8+PHJlY3QgeD0iMiIgd2lkdGg9IjEiIGhlaWdodD0iMiIgZmlsbD0iI0VEMjkzOSIvPjwvc3ZnPg==",
@@ -677,28 +704,36 @@ function LiveModal({match,onClose}){
   const[fd,setFd]=useState(null);
   const[loading,setLoading]=useState(true);
   const ivRef=useRef(null);
-  const load=useCallback(async()=>{
+    const load=useCallback(async()=>{
     if(!match)return;
     try{
-      let fid = match.apiFixtureId || null;
-      if(!fid){
-        // Fallback: chercher par date et nom d'équipe
-        const r=await fetch(`${API_BASE}/fixtures?league=1&season=2026&date=${match.date}`,{headers:{"x-apisports-key":API_KEY}});
+      const mid=match.apiMatchId||null;
+      if(mid){
+        const r=await fetch(`/api/matches?type=match&fixtureId=${mid}`);
+        if(!r.ok)throw new Error("match proxy "+r.status);
         const j=await r.json();
-        const found=(j.response||[]).find(fx=>matchTeam(fx.teams.home.name, match.homeTeam));
-        if(found) fid=found.fixture.id;
+        // Construire les événements depuis football-data.org
+        const events=[];
+        (j.goals||[]).forEach(g=>{events.push({time:{elapsed:g.minute},type:"Goal",player:{name:g.scorer?.name||"?"},team:{name:EN_TO_FR[g.team?.name]||g.team?.name}});});
+        (j.bookings||[]).forEach(b=>{events.push({time:{elapsed:b.minute},type:"Card",detail:b.card==="YELLOW_CARD"?"Yellow Card":"Red Card",player:{name:b.player?.name||"?"},team:{name:EN_TO_FR[b.team?.name]||b.team?.name}});});
+        (j.substitutions||[]).forEach(s=>{events.push({time:{elapsed:s.minute},type:"subst",player:{name:s.playerIn?.name||"?"},team:{name:EN_TO_FR[s.team?.name]||s.team?.name}});});
+        events.sort((a,b)=>(a.time?.elapsed||0)-(b.time?.elapsed||0));
+        // Compositions si dispo
+        const lineups=[];
+        if(j.homeTeam?.lineup?.length>0){
+          lineups.push({team:{name:match.homeTeam},formation:j.homeTeam.formation||"",startXI:j.homeTeam.lineup.map(p=>({player:{name:p.name,number:p.shirtNumber}}))});
+        }
+        if(j.awayTeam?.lineup?.length>0){
+          lineups.push({team:{name:match.awayTeam},formation:j.awayTeam.formation||"",startXI:j.awayTeam.lineup.map(p=>({player:{name:p.name,number:p.shirtNumber}}))});
+        }
+        setFd({fixture:j,stats:[],lineups,events});
+      }else{
+        setFd({fixture:null,stats:[],lineups:[],events:[]});
       }
-      if(fid){
-        const[sr,lr,er]=await Promise.all([
-          fetch(`${API_BASE}/fixtures/statistics?fixture=${fid}`,{headers:{"x-apisports-key":API_KEY}}),
-          fetch(`${API_BASE}/fixtures/lineups?fixture=${fid}`,{headers:{"x-apisports-key":API_KEY}}),
-          fetch(`${API_BASE}/fixtures/events?fixture=${fid}`,{headers:{"x-apisports-key":API_KEY}})
-        ]);
-        const[sj,lj,ej]=await Promise.all([sr.json(),lr.json(),er.json()]);
-        setFd({fixture:found,stats:sj.response||[],lineups:lj.response||[],events:ej.response||[]});
-      }else{setFd({fixture:null,stats:[],lineups:[],events:[]});}
-    }catch{setFd({fixture:null,stats:[],lineups:[],events:[]});}
-    finally{setLoading(false);}
+    }catch(e){
+      console.warn("LiveModal:",e);
+      setFd({fixture:null,stats:[],lineups:[],events:[]});
+    }finally{setLoading(false);}
   },[match]);
   useEffect(()=>{load();ivRef.current=setInterval(load,30000);return()=>clearInterval(ivRef.current);},[load]);
   if(!match)return null;
@@ -1073,21 +1108,28 @@ export default function App(){
     if(!loaded)return;
     const fetchLive=async()=>{
       try{
-        const r=await fetch(`${API_BASE}/fixtures?league=1&season=2026`,{headers:{"x-apisports-key":API_KEY}});
+        // Utilise notre proxy Vercel /api/matches pour éviter CORS et plan limité
+        const r=await fetch("/api/matches?type=all");
+        if(!r.ok) throw new Error("API proxy: "+r.status);
         const j=await r.json();
-        if(j.response&&j.response.length>0){
+        const matches=j.matches||[];
+        if(matches.length>0){
           setFixtures(prev=>{
             const upd=[...prev];
-            j.response.forEach(af=>{
-              const idx=upd.findIndex(s=>matchTeam(af.teams.home.name, s.homeTeam));
+            matches.forEach(m=>{
+              // Convertir noms EN→FR pour trouver le match dans nos données
+              const homeFr=EN_TO_FR[m.homeTeam?.name]||m.homeTeam?.name;
+              const idx=upd.findIndex(s=>s.homeTeam===homeFr);
               if(idx!==-1){
-                const st=af.fixture.status||{};
+                const st=FD_STATUS[m.status]||null;
+                const hs=m.score?.fullTime?.home??m.score?.halfTime?.home??null;
+                const as_=m.score?.fullTime?.away??m.score?.halfTime?.away??null;
                 upd[idx]={...upd[idx],
-                  apiFixtureId:af.fixture.id,
-                  homeScore:af.goals.home,
-                  awayScore:af.goals.away,
-                  status:st.short||null,
-                  elapsed:st.elapsed||null
+                  apiMatchId:m.id,
+                  homeScore:hs,
+                  awayScore:as_,
+                  status:st,
+                  elapsed:m.minute||null
                 };
               }
             });
@@ -1095,7 +1137,7 @@ export default function App(){
           });
           setApiOk(true);
         }
-      }catch(e){console.warn("API:",e);}
+      }catch(e){console.warn("API proxy error:",e);}
     };
     fetchLive();
     const iv=setInterval(fetchLive,60000);

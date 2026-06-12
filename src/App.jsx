@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect } from "react";
 
 const API_KEY = "f0df5fe54c4c5f63c8cb2ee1f3e58acb";
 const API_BASE = "https://v3.football.api-sports.io";
@@ -608,8 +608,7 @@ function Loading({onDone}){
 }
 
 // ─── MATCH CARD ───────────────────────────────────────────────────────────────
-function MatchCard({match,onClick}){
-  const[hov,setHov]=useState(false);
+function MatchCard({match}){
   const p=getProbs(match.homeTeam,match.awayTeam);
   const d=new Date(match.date+"T12:00:00");
   const ds=d.toLocaleDateString("fr-FR",{weekday:"short",day:"numeric",month:"short"});
@@ -617,10 +616,9 @@ function MatchCard({match,onClick}){
   const isLive=["1H","2H","HT","ET"].includes(match.status);
   const isDone=["FT","AET","PEN"].includes(match.status);
   const onM6=M6.has(match.id);
-  const base={background:isLive?"rgba(239,68,68,0.06)":"#0a111e",border:`1px solid ${isLive?"rgba(239,68,68,0.28)":"rgba(99,179,237,0.1)"}`,borderRadius:14,padding:"16px 18px",marginBottom:10,cursor:"pointer",transition:"all .15s"};
-  const style=hov?{...base,transform:"translateY(-2px)",boxShadow:"0 8px 28px rgba(0,0,0,0.4)",borderColor:"rgba(99,179,237,0.3)"}:base;
+  const style={background:isLive?"rgba(239,68,68,0.06)":"#0a111e",border:`1px solid ${isLive?"rgba(239,68,68,0.28)":"rgba(99,179,237,0.1)"}`,borderRadius:14,padding:"16px 18px",marginBottom:10};
   return(
-    <div style={style} onClick={()=>onClick(match)} onMouseEnter={()=>setHov(true)} onMouseLeave={()=>setHov(false)}>
+    <div style={style}>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
         <span style={{fontSize:12,color:"#6b7280",fontWeight:500}}>{ds} · {match.time} · Gr.{match.group}</span>
         <div style={{display:"flex",alignItems:"center",gap:6}}>
@@ -699,229 +697,13 @@ function BracketMatch({t1,t2,hs,as:as_,st,label,date,onM6:onM6_}){
   );
 }
 
-// ─── LIVE MODAL ───────────────────────────────────────────────────────────────
-function LiveModal({match,onClose}){
-  const[fd,setFd]=useState(null);
-  const[loading,setLoading]=useState(true);
-  const ivRef=useRef(null);
-    const load=useCallback(async()=>{
-    if(!match)return;
-    try{
-      const mid=match.apiMatchId||null;
-      if(!mid){
-        // Pas encore synchronisé — essayer de récupérer via /api/matches?type=all
-        const r=await fetch("/api/matches?type=all");
-        if(r.ok){
-          const j=await r.json();
-          const found=(j.matches||[]).find(m=>{
-            const hFr=EN_TO_FR[m.homeTeam?.name]||m.homeTeam?.name;
-            return hFr===match.homeTeam;
-          });
-          if(found){
-            // Mettre à jour le match avec l'ID trouvé et réessayer
-            match={...match,apiMatchId:found.id};
-          }
-        }
-      }
-      const mid2=match.apiMatchId||null;
-      if(mid2){
-        const r=await fetch(`/api/matches?type=match&fixtureId=${mid2}`);
-        if(!r.ok)throw new Error("match proxy "+r.status);
-        const j=await r.json();
 
-        // ─── Score depuis cet appel (au cas où pas encore dans fixtures) ───
-        const ft=j.score?.fullTime;
-        const hs=(ft?.home!==null&&ft?.home!==undefined)?ft.home:null;
-        const as_=(ft?.away!==null&&ft?.away!==undefined)?ft.away:null;
-
-        // ─── Événements ────────────────────────────────────────────────────
-        const events=[];
-        (j.goals||[]).forEach(g=>{
-          events.push({
-            time:{elapsed:g.minute},
-            type:"Goal",
-            player:{name:g.scorer?.name||g.scorer?.shortName||"?"},
-            team:{name:EN_TO_FR[g.team?.name]||g.team?.name}
-          });
-        });
-        (j.bookings||[]).forEach(b=>{
-          events.push({
-            time:{elapsed:b.minute},
-            type:"Card",
-            detail:b.card==="YELLOW_CARD"?"Yellow Card":"Red Card",
-            player:{name:b.player?.name||b.player?.shortName||"?"},
-            team:{name:EN_TO_FR[b.team?.name]||b.team?.name}
-          });
-        });
-        (j.substitutions||[]).forEach(s=>{
-          events.push({
-            time:{elapsed:s.minute},
-            type:"subst",
-            player:{name:s.playerIn?.name||s.playerIn?.shortName||"?"},
-            team:{name:EN_TO_FR[s.team?.name]||s.team?.name}
-          });
-        });
-        events.sort((a,b)=>(a.time?.elapsed||0)-(b.time?.elapsed||0));
-
-        // ─── Compositions ──────────────────────────────────────────────────
-        const lineups=[];
-        if(j.homeTeam?.lineup?.length>0){
-          lineups.push({
-            team:{name:match.homeTeam},
-            formation:j.homeTeam.formation||"",
-            startXI:(j.homeTeam.lineup||[]).filter(p=>p.position!=="BENCH"&&p.status==="ACTIVE").map(p=>({
-              player:{name:p.name||p.shortName||"?",number:p.shirtNumber||"?"}
-            }))
-          });
-        }
-        if(j.awayTeam?.lineup?.length>0){
-          lineups.push({
-            team:{name:match.awayTeam},
-            formation:j.awayTeam.formation||"",
-            startXI:(j.awayTeam.lineup||[]).filter(p=>p.position!=="BENCH"&&p.status==="ACTIVE").map(p=>({
-              player:{name:p.name||p.shortName||"?",number:p.shirtNumber||"?"}
-            }))
-          });
-        }
-
-        // ─── Statistiques adaptées ─────────────────────────────────────────
-        // football-data.org ne fournit pas les stats classiques (possession etc)
-        // On affiche ce qu'on a: buts, cartons, changements par équipe
-        const homeGoals=(j.goals||[]).filter(g=>EN_TO_FR[g.team?.name]===match.homeTeam||g.team?.name===match.homeTeam);
-        const awayGoals=(j.goals||[]).filter(g=>EN_TO_FR[g.team?.name]===match.awayTeam||g.team?.name===match.awayTeam);
-        const homeCards=(j.bookings||[]).filter(b=>EN_TO_FR[b.team?.name]===match.homeTeam||b.team?.name===match.homeTeam);
-        const awayCards=(j.bookings||[]).filter(b=>EN_TO_FR[b.team?.name]===match.awayTeam||b.team?.name===match.awayTeam);
-        const homeSubs=(j.substitutions||[]).filter(s=>EN_TO_FR[s.team?.name]===match.homeTeam||s.team?.name===match.homeTeam);
-        const awaySubs=(j.substitutions||[]).filter(s=>EN_TO_FR[s.team?.name]===match.awayTeam||s.team?.name===match.awayTeam);
-        const stats=[
-          {type:"Buts",homeVal:homeGoals.length,awayVal:awayGoals.length},
-          {type:"Cartons",homeVal:homeCards.length,awayVal:awayCards.length},
-          {type:"Changements",homeVal:homeSubs.length,awayVal:awaySubs.length},
-        ].filter(s=>s.homeVal>0||s.awayVal>0);
-
-        const statsFormatted=stats.length>0?[
-          {statistics:stats.map(s=>({type:s.type,value:s.homeVal}))},
-          {statistics:stats.map(s=>({type:s.type,value:s.awayVal}))}
-        ]:[];
-
-        setFd({
-          fixture:{...j,computedScore:{home:hs,away:as_}},
-          stats:statsFormatted,
-          lineups,
-          events
-        });
-      }else{
-        setFd({fixture:null,stats:[],lineups:[],events:[]});
-      }
-    }catch(e){
-      console.warn("LiveModal:",e);
-      setFd({fixture:null,stats:[],lineups:[],events:[]});
-    }finally{setLoading(false);}
-  },[match]);
-  useEffect(()=>{load();ivRef.current=setInterval(load,30000);return()=>clearInterval(ivRef.current);},[load]);
-  if(!match)return null;
-  const p=getProbs(match.homeTeam,match.awayTeam);
-  const isLive=["1H","2H","HT"].includes(match.status);
-  const isDone=["FT","AET","PEN"].includes(match.status);
-  return(
-    <div onClick={e=>e.target===e.currentTarget&&onClose()} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.88)",backdropFilter:"blur(6px)",zIndex:1000,overflowY:"auto",display:"flex",padding:"20px 0"}}>
-      <div style={{background:"linear-gradient(180deg,#0c1523,#070d18)",border:"1px solid rgba(99,179,237,0.18)",borderRadius:20,width:"min(860px,94vw)",padding:28,margin:"auto",position:"relative"}}>
-        <button onClick={onClose} style={{position:"absolute",top:14,right:14,background:"rgba(255,255,255,0.07)",border:"none",color:"#9ca3af",cursor:"pointer",borderRadius:8,padding:"5px 10px",fontSize:17,fontFamily:"inherit"}}>✕</button>
-        <div style={{textAlign:"center",marginBottom:22}}>
-          <div style={{fontSize:12,color:"#6b7280",marginBottom:6}}>{match.date} · {match.time} · Groupe {match.group} · {match.venue}</div>
-          <div style={{display:"flex",alignItems:"center",justifyContent:"center",gap:22}}>
-            <div style={{textAlign:"center"}}><Flag country={match.homeTeam} size={52}/><div style={{fontSize:17,fontWeight:800,color:"#e2e8f0",marginTop:6}}>{match.homeTeam}</div></div>
-            <div style={{textAlign:"center"}}>
-              {(()=>{
-              // Priorité: score du match (fetchLive) > score de l'API détail > VS
-              const hs=match.homeScore!==null&&match.homeScore!==undefined?match.homeScore
-                      :fd?.fixture?.score?.fullTime?.home!==null&&fd?.fixture?.score?.fullTime?.home!==undefined?fd.fixture.score.fullTime.home
-                      :null;
-              const as_=match.awayScore!==null&&match.awayScore!==undefined?match.awayScore
-                       :fd?.fixture?.score?.fullTime?.away!==null&&fd?.fixture?.score?.fullTime?.away!==undefined?fd.fixture.score.fullTime.away
-                       :null;
-              if(hs!==null&&as_!==null){
-                return<div style={{fontSize:44,fontWeight:900,color:"#fff",letterSpacing:-2}}>{hs} - {as_}</div>;
-              }
-              return<div style={{fontSize:24,color:"#4fc3f7",fontWeight:700}}>VS</div>;
-            })()}
-              {isLive&&<div style={{display:"flex",alignItems:"center",justifyContent:"center",gap:5,marginTop:4}}><span style={{width:7,height:7,borderRadius:"50%",background:"#ef4444",display:"block",animation:"pulse 1s infinite"}}/><span style={{color:"#ef4444",fontSize:13,fontWeight:700}}>LIVE</span></div>}
-              {isDone&&<div style={{color:"#6b7280",fontSize:12,marginTop:4}}>Match terminé</div>}
-            </div>
-            <div style={{textAlign:"center"}}><Flag country={match.awayTeam} size={52}/><div style={{fontSize:17,fontWeight:800,color:"#e2e8f0",marginTop:6}}>{match.awayTeam}</div></div>
-          </div>
-          <div style={{marginTop:10,display:"flex",justifyContent:"center",gap:5}}>
-            {M6.has(match.id)&&<span style={{background:"rgba(249,115,22,0.14)",border:"1px solid rgba(249,115,22,0.35)",color:"#fb923c",padding:"3px 9px",borderRadius:5,fontSize:11,fontWeight:700}}>M6</span>}
-            <span style={{background:"rgba(99,179,237,0.08)",border:"1px solid rgba(99,179,237,0.25)",color:"#63b3ed",padding:"3px 9px",borderRadius:5,fontSize:11,fontWeight:700}}>beIN Sports</span>
-          </div>
-        </div>
-        <div style={{marginBottom:20}}>
-          <div style={{display:"flex",justifyContent:"space-between",fontSize:12,color:"#9ca3af",marginBottom:6}}>
-            <span style={{color:"#60a5fa"}}>{match.homeTeam} {p.home}%</span><span>Nul {p.draw}%</span><span style={{color:"#fbbf24"}}>{match.awayTeam} {p.away}%</span>
-          </div>
-          <div style={{display:"flex",borderRadius:7,overflow:"hidden",height:7}}>
-            <div style={{flex:p.home,background:"linear-gradient(90deg,#3b82f6,#60a5fa)"}}/><div style={{flex:p.draw,background:"#1e293b"}}/><div style={{flex:p.away,background:"linear-gradient(90deg,#f59e0b,#fbbf24)"}}/>
-          </div>
-        </div>
-        {loading?<div style={{textAlign:"center",padding:36,color:"#6b7280"}}><div style={{fontSize:28,animation:"spin 1s linear infinite",display:"inline-block"}}>⚽</div><div style={{marginTop:10,fontSize:13}}>Chargement des données API…</div></div>:
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:20}}>
-          <div>
-            <div style={{fontSize:12,color:"#6b7280",textTransform:"uppercase",letterSpacing:2,marginBottom:12}}>Statistiques</div>
-            {fd&&fd.stats.length>0?fd.stats[0].statistics.map((s,i)=>{
-              const av=fd.stats[1]?.statistics?.[i]?.value||0;
-              const hv=parseInt(s.value)||0,avn=parseInt(av)||0,tot=(hv+avn)||1;
-              return(<div key={i} style={{marginBottom:10}}>
-                <div style={{display:"flex",justifyContent:"space-between",fontSize:11,color:"#9ca3af",marginBottom:3}}><span style={{color:"#60a5fa"}}>{s.value??0}</span><span style={{fontSize:10,color:"#4b5563"}}>{s.type}</span><span style={{color:"#fbbf24"}}>{av??0}</span></div>
-                <div style={{display:"flex",borderRadius:3,overflow:"hidden",height:3}}><div style={{flex:hv/tot,background:"#3b82f6"}}/><div style={{flex:avn/tot,background:"#f59e0b"}}/></div>
-              </div>);
-            }):<div style={{color:"#4b5563",fontSize:13,padding:"16px 0"}}>{match.homeScore===null?"Les statistiques seront disponibles lors du prochain match.":"Score: "+((match.homeScore??fd?.fixture?.score?.fullTime?.home)??"?")+" - "+((match.awayScore??fd?.fixture?.score?.fullTime?.away)??"?")+" · Données détaillées non incluses dans le plan API gratuit."}</div>}
-          </div>
-          <div>
-            <div style={{fontSize:12,color:"#6b7280",textTransform:"uppercase",letterSpacing:2,marginBottom:12}}>Événements</div>
-            {fd&&fd.events.length>0?<div style={{maxHeight:180,overflowY:"auto",display:"flex",flexDirection:"column",gap:6}}>
-              {fd.events.map((ev,i)=><div key={i} style={{display:"flex",alignItems:"center",gap:8,fontSize:13,color:"#e2e8f0"}}>
-                <span style={{color:"#6b7280",minWidth:28,fontSize:11}}>{ev.time?.elapsed}'</span>
-                <span>{ev.type==="Goal"?"⚽":ev.type==="subst"?"🔄":ev.detail==="Yellow Card"?"🟨":"🟥"}</span>
-                <span>{ev.player?.name}</span><span style={{color:"#4b5563",fontSize:10}}>({ev.team?.name})</span>
-              </div>)}
-            </div>:<div style={{color:"#4b5563",fontSize:13,padding:"16px 0"}}>{match.homeScore===null?"Les événements apparaîtront lors du prochain match live.":"Buts & événements non disponibles sur le plan gratuit football-data.org."}</div>}
-            <div style={{fontSize:12,color:"#6b7280",textTransform:"uppercase",letterSpacing:2,margin:"16px 0 12px"}}>Compositions</div>
-            {fd&&fd.lineups.length>0?<div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
-              {fd.lineups.map((lu,i)=><div key={i}><div style={{fontSize:11,color:"#9ca3af",marginBottom:5,display:"flex",alignItems:"center",gap:5}}><Flag country={i===0?match.homeTeam:match.awayTeam} size={14}/>{lu.formation}</div><PitchView lineup={lu}/></div>)}
-            </div>:<div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
-              {[match.homeTeam,match.awayTeam].map((t,i)=><div key={i}><div style={{fontSize:11,color:"#9ca3af",marginBottom:5,display:"flex",alignItems:"center",gap:5}}><Flag country={t} size={14}/>{t}</div><PitchView lineup={null}/></div>)}
-            </div>}
-          </div>
-        </div>}
-      </div>
-      <style>{`@keyframes spin{to{transform:rotate(360deg)}}@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}`}</style>
-    </div>
-  );
-}
-
-function PitchView({lineup}){
-  if(!lineup||!lineup.startXI)return(<div style={{background:"linear-gradient(180deg,#1a4731,#2d6a4f)",borderRadius:9,padding:12,minHeight:170,display:"flex",alignItems:"center",justifyContent:"center",flexDirection:"column",gap:6}}><div style={{fontSize:24}}>🏟️</div><div style={{color:"rgba(255,255,255,0.3)",fontSize:11}}>Compo non disponible</div></div>);
-  const pls=lineup.startXI.map(x=>x.player);
-  const rows=[[pls[0]]];let idx=1;
-  (lineup.formation||"4-4-2").split("-").map(Number).reverse().forEach(c=>{rows.push(pls.slice(idx,idx+c));idx+=c;});
-  return(<div style={{background:"linear-gradient(180deg,#1a4731,#2d6a4f,#1a4731)",borderRadius:9,padding:"10px 6px",minHeight:170,border:"1px solid rgba(255,255,255,0.05)"}}>
-    <div style={{display:"flex",flexDirection:"column",gap:10}}>
-      {rows.map((row,ri)=>(<div key={ri} style={{display:"flex",justifyContent:"center",gap:7}}>
-        {row.map((pl,pi)=>(<div key={pi} style={{display:"flex",flexDirection:"column",alignItems:"center",gap:2}}>
-          <div style={{width:26,height:26,borderRadius:"50%",background:"rgba(255,255,255,0.9)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:9,fontWeight:700,color:"#1a4731"}}>{pl.number}</div>
-          <span style={{fontSize:8,color:"rgba(255,255,255,0.85)",textAlign:"center",maxWidth:40,lineHeight:1.1}}>{pl.name?.split(" ").pop()}</span>
-        </div>))}
-      </div>))}
-    </div>
-    <div style={{textAlign:"center",marginTop:5,fontSize:8,color:"rgba(255,255,255,0.3)"}}>{lineup.formation}</div>
-  </div>);
-}
 
 // ─── ONGLETS CONFIG ───────────────────────────────────────────────────────────
 const TABS=[{id:"conf",label:"⚽ Confrontations"},{id:"poules",label:"📊 Poules"},{id:"tableau",label:"🗂️ Tableau"},{id:"eff",label:"👥 Effectifs"},{id:"prob",label:"🎯 Probabilités"},{id:"parc",label:"🏆 Parcours"}];
 
 // ─── CONFRONTATIONS ───────────────────────────────────────────────────────────
-function ConfTab({fixtures,onMatchClick}){
+function ConfTab({fixtures}){
   const[filter,setFilter]=useState("all");
   const grouped={};
   fixtures.forEach(m=>{
@@ -951,7 +733,7 @@ function ConfTab({fixtures,onMatchClick}){
           <div style={{height:1,flex:1,background:"rgba(99,179,237,0.08)"}}/>
         </div>
         <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(300px,1fr))",gap:10}}>
-          {ms.map(m=><MatchCard key={m.id} match={m} onClick={onMatchClick}/>)}
+          {ms.map(m=><MatchCard key={m.id} match={m}/>)}
         </div>
       </div>);
     })}
@@ -960,7 +742,7 @@ function ConfTab({fixtures,onMatchClick}){
 }
 
 // ─── POULES — tableau sans superposition ─────────────────────────────────────
-function PoulesTab({fixtures,onMatchClick}){
+function PoulesTab({fixtures}){
   const[sel,setSel]=useState("A");
   const std=getStandings(sel,fixtures);
   const gms=fixtures.filter(m=>m.group===sel).sort((a,b)=>a.date.localeCompare(b.date));
@@ -1014,7 +796,7 @@ function PoulesTab({fixtures,onMatchClick}){
         </div>
       </div>
       {/* Matchs du groupe */}
-      <div>{gms.map(m=><MatchCard key={m.id} match={m} onClick={onMatchClick}/>)}</div>
+      <div>{gms.map(m=><MatchCard key={m.id} match={m}/>)}</div>
     </div>
   </div>);
 }
@@ -1196,7 +978,7 @@ export default function App(){
   const[loaded,setLoaded]=useState(false);
   const[tab,setTab]=useState("conf");
   const[fixtures,setFixtures]=useState(FIXTURES_INIT);
-  const[selMatch,setSelMatch]=useState(null);
+
   const[apiOk,setApiOk]=useState(false);
 
   useEffect(()=>{
@@ -1286,8 +1068,8 @@ export default function App(){
 
       {/* MAIN */}
       <main style={{maxWidth:1200,margin:"0 auto",padding:"28px 20px"}}>
-        {tab==="conf"&&<ConfTab fixtures={fixtures} onMatchClick={setSelMatch}/>}
-        {tab==="poules"&&<PoulesTab fixtures={fixtures} onMatchClick={setSelMatch}/>}
+        {tab==="conf"&&<ConfTab fixtures={fixtures}/>}
+        {tab==="poules"&&<PoulesTab fixtures={fixtures}/>}
         {tab==="tableau"&&<TableauTab fixtures={fixtures}/>}
         {tab==="eff"&&<EffectifsTab/>}
         {tab==="prob"&&<ProbTab/>}
@@ -1299,7 +1081,7 @@ export default function App(){
         <div style={{marginTop:3}}>11 juin – 19 juillet 2026 · 48 équipes · 104 matchs · 16 stades · Canada, USA, Mexique</div>
       </footer>
 
-      {selMatch&&<LiveModal match={selMatch} onClose={()=>setSelMatch(null)}/>}
+
 
       <style>{`
         * { box-sizing: border-box; margin: 0; padding: 0; }

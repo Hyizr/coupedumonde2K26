@@ -597,7 +597,7 @@ function Loading({onDone}){
       <div style={{textAlign:"center"}}>
         <div style={{fontSize:26,fontWeight:900,background:"linear-gradient(135deg,#63b3ed,#90cdf4)",WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent"}}>COUPE DU MONDE 2026</div>
         <div style={{fontSize:13,color:"#4fc3f7",letterSpacing:5,marginTop:4}}>BY AMADHY</div>
-        <div style={{marginTop:12,color:"#374151",fontSize:12}}>Chargement des données…</div>
+        <div style={{marginTop:12,color:"#4b5563",fontSize:12}}>Chargement des données…</div>
         <div style={{marginTop:10,width:180,height:3,background:"rgba(99,179,237,0.08)",borderRadius:2,overflow:"hidden",margin:"10px auto 0"}}>
           <div style={{height:"100%",background:"#63b3ed",width:`${p}%`,transition:"width 0.1s"}}/>
         </div>
@@ -1043,7 +1043,7 @@ export default function App(){
               <span style={{fontSize:26}}>⚽</span>
               <div>
                 <div style={{fontWeight:900,fontSize:"clamp(12px,3vw,17px)",background:"linear-gradient(135deg,#63b3ed,#90cdf4)",WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent"}}>COUPE DU MONDE 2026</div>
-                <div style={{fontSize:10,color:"#374151",letterSpacing:4,marginTop:-1}}>BY AMADHY</div>
+                <div style={{fontSize:10,color:"#90cdf4",letterSpacing:4,marginTop:-1,fontWeight:600}}>BY AMADHY</div>
               </div>
             </div>
             <div style={{display:"flex",alignItems:"center",gap:10}}>
@@ -1056,7 +1056,8 @@ export default function App(){
               </div>
             </div>
           </div>
-          <nav style={{display:"flex",overflowX:"auto"}}>
+          {/* Nav desktop — cachée sur mobile */}
+          <nav style={{display:"flex",overflowX:"auto"}} className="desktop-nav">
             {TABS.map(t=>(
               <button key={t.id} onClick={()=>setTab(t.id)} style={{padding:"11px 16px",background:"transparent",border:"none",borderBottom:tab===t.id?"2px solid #63b3ed":"2px solid transparent",color:tab===t.id?"#63b3ed":"#6b7280",cursor:"pointer",fontSize:13,fontWeight:600,whiteSpace:"nowrap",fontFamily:"inherit",transition:"all .12s"}}>
                 {t.label}
@@ -1064,7 +1065,38 @@ export default function App(){
             ))}
           </nav>
         </div>
-      </header>
+      
+      {/* Menu mobile burger — overlay */}
+      {menuOpen&&(
+        <div style={{position:"fixed",top:0,left:0,right:0,bottom:0,zIndex:99,background:"rgba(0,0,0,0.5)"}} onClick={()=>setMenuOpen(false)}>
+          <div style={{position:"absolute",top:0,right:0,bottom:0,width:"75vw",maxWidth:280,background:"#0a111e",borderLeft:"1px solid rgba(99,179,237,0.15)",display:"flex",flexDirection:"column",paddingTop:20}} onClick={e=>e.stopPropagation()}>
+            {/* Header du menu */}
+            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"0 20px 16px",borderBottom:"1px solid rgba(99,179,237,0.1)"}}>
+              <div>
+                <div style={{fontWeight:900,fontSize:14,background:"linear-gradient(135deg,#63b3ed,#90cdf4)",WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent"}}>CDM 2026</div>
+                <div style={{fontSize:9,color:"#90cdf4",letterSpacing:2,fontWeight:600}}>BY AMADHY</div>
+              </div>
+              <button onClick={()=>setMenuOpen(false)} style={{background:"rgba(255,255,255,0.06)",border:"none",color:"#9ca3af",cursor:"pointer",borderRadius:7,padding:"5px 9px",fontSize:16,fontFamily:"inherit"}}>✕</button>
+            </div>
+            {/* Liens de navigation */}
+            <div style={{display:"flex",flexDirection:"column",padding:"12px 0",flex:1,overflowY:"auto"}}>
+              {TABS.map(t=>(
+                <button key={t.id} onClick={()=>{setTab(t.id);setMenuOpen(false);}} style={{display:"flex",alignItems:"center",gap:12,padding:"14px 20px",background:tab===t.id?"rgba(99,179,237,0.1)":"transparent",border:"none",borderLeft:tab===t.id?"3px solid #63b3ed":"3px solid transparent",color:tab===t.id?"#63b3ed":"#9ca3af",cursor:"pointer",fontSize:14,fontWeight:600,textAlign:"left",fontFamily:"inherit",transition:"all .12s"}}>
+                  <span style={{fontSize:18}}>{t.label.split(" ")[0]}</span>
+                  <span>{t.label.split(" ").slice(1).join(" ")}</span>
+                </button>
+              ))}
+            </div>
+            {/* Footer du menu */}
+            <div style={{padding:"16px 20px",borderTop:"1px solid rgba(99,179,237,0.08)"}}>
+              <div style={{display:"flex",alignItems:"center",gap:6,fontSize:10,color:apiOk?"#22c55e":"#f59e0b"}}>
+                <span style={{width:6,height:6,borderRadius:"50%",background:apiOk?"#22c55e":"#f59e0b",display:"block"}}/>
+                {apiOk?"Données live":"Données locales"}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}</header>
 
       {/* MAIN */}
       <main style={{maxWidth:1200,margin:"0 auto",padding:"clamp(12px,3vw,28px) clamp(10px,3vw,20px)"}}>
@@ -1090,6 +1122,16 @@ export default function App(){
         @keyframes spin { to { transform: rotate(360deg); } }
         @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: .3; } }
         body { background: #060d1a; }
+        /* Mobile: cacher nav desktop, montrer burger */
+        @media (max-width: 768px) {
+          .desktop-nav { display: none !important; }
+          .burger-btn { display: flex !important; }
+          .flags-desktop { display: none !important; }
+        }
+        /* Desktop: cacher burger */
+        @media (min-width: 769px) {
+          .burger-btn { display: none !important; }
+        }
         @media (max-width: 640px) {
           .main-content { padding: 14px 12px !important; }
           .match-grid { grid-template-columns: 1fr !important; }

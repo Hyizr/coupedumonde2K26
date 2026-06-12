@@ -1058,7 +1058,7 @@ export default function App(){
               <button
                 className="burger-btn"
                 onClick={()=>setMenuOpen(o=>!o)}
-                style={{background:"rgba(99,179,237,0.1)",border:"1px solid rgba(99,179,237,0.2)",borderRadius:8,padding:"7px 9px",cursor:"pointer",flexDirection:"column",gap:5,alignItems:"center",justifyContent:"center"}}
+                style={{background:"rgba(99,179,237,0.1)",border:"1px solid rgba(99,179,237,0.2)",borderRadius:8,padding:"7px 9px",cursor:"pointer",display:"flex",flexDirection:"column",gap:5,alignItems:"center",justifyContent:"center"}}
               >
                 <span style={{display:"block",width:18,height:2,background:"#9ca3af",borderRadius:2,transition:"all .2s",transform:menuOpen?"rotate(45deg) translate(4px,4px)":"none"}}/>
                 <span style={{display:"block",width:18,height:2,background:menuOpen?"transparent":"#9ca3af",borderRadius:2,transition:"all .2s"}}/>

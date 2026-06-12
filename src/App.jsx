@@ -652,11 +652,21 @@ function MatchCard({match}){
           <Flag country={match.awayTeam} size={26}/>
         </div>
       </div>
-      <div style={{display:"flex",borderRadius:4,overflow:"hidden",height:4,marginTop:12}}>
-        <div style={{flex:p.home,background:"#3b82f6"}}/><div style={{flex:p.draw,background:"#1e293b"}}/><div style={{flex:p.away,background:"#f59e0b"}}/>
-      </div>
-      <div style={{display:"flex",justifyContent:"space-between",marginTop:3,fontSize:11}}>
-        <span style={{color:"#60a5fa"}}>{p.home}%</span><span style={{color:"#6b7280"}}>Nul {p.draw}%</span><span style={{color:"#fbbf24"}}>{p.away}%</span>
+      <div style={{position:"relative",marginTop:12}}>
+        <div style={{display:"flex",borderRadius:4,overflow:"hidden",height:4}}>
+          <div style={{flex:p.home,background:"#3b82f6"}}/><div style={{flex:p.draw,background:"#374151"}}/><div style={{flex:p.away,background:"#f59e0b"}}/>
+        </div>
+        <div style={{display:"flex",justifyContent:"space-between",marginTop:3,fontSize:11,position:"relative"}}>
+          <span style={{color:"#60a5fa"}}>{p.home}%</span>
+          <span style={{
+            position:"absolute",
+            left:`${p.home + p.draw/2}%`,
+            transform:"translateX(-50%)",
+            color:"#6b7280",
+            fontSize:10
+          }}>{p.draw}%</span>
+          <span style={{color:"#fbbf24"}}>{p.away}%</span>
+        </div>
       </div>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginTop:10}}>
         <span style={{fontSize:11,color:"#374151",flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>📍 {match.venue}</span>
@@ -689,12 +699,14 @@ function BracketMatch({t1,t2,hs,as:as_,st,label,date,onM6:onM6_}){
         ))}
       </div>
       {p&&!hasSc&&(
-        <div style={{marginTop:8}}>
+        <div style={{marginTop:8,position:"relative"}}>
           <div style={{display:"flex",borderRadius:3,overflow:"hidden",height:4}}>
-            <div style={{flex:p.home,background:"#3b82f6"}}/><div style={{flex:p.draw,background:"#1e293b"}}/><div style={{flex:p.away,background:"#f59e0b"}}/>
+            <div style={{flex:p.home,background:"#3b82f6"}}/><div style={{flex:p.draw,background:"#374151"}}/><div style={{flex:p.away,background:"#f59e0b"}}/>
           </div>
-          <div style={{display:"flex",justifyContent:"space-between",fontSize:10,marginTop:3}}>
-            <span style={{color:"#60a5fa"}}>{p.home}%</span><span style={{color:"#6b7280"}}>Nul {p.draw}%</span><span style={{color:"#fbbf24"}}>{p.away}%</span>
+          <div style={{display:"flex",justifyContent:"space-between",fontSize:10,marginTop:3,position:"relative"}}>
+            <span style={{color:"#60a5fa"}}>{p.home}%</span>
+            <span style={{position:"absolute",left:`${p.home+p.draw/2}%`,transform:"translateX(-50%)",color:"#6b7280",fontSize:9}}>{p.draw}%</span>
+            <span style={{color:"#fbbf24"}}>{p.away}%</span>
           </div>
         </div>
       )}
@@ -969,8 +981,12 @@ function ParcoursTab(){
       <div style={{display:"flex",gap:10,flexWrap:"wrap",marginBottom:22}}>
         {opps.map(o=>{const p=getProbs(sel,o);return(<div key={o} style={{background:"rgba(99,179,237,0.04)",border:"1px solid rgba(99,179,237,0.09)",borderRadius:10,padding:"12px 14px",flex:1,minWidth:145}}>
           <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:9,fontWeight:700,color:"#e2e8f0",fontSize:14}}><Flag country={o} size={22}/>{o}</div>
-          <div style={{display:"flex",borderRadius:4,overflow:"hidden",height:5,marginBottom:5}}><div style={{flex:p.home,background:"#3b82f6"}}/><div style={{flex:p.draw,background:"#1e293b"}}/><div style={{flex:p.away,background:"#f59e0b"}}/></div>
-          <div style={{display:"flex",justifyContent:"space-between",fontSize:11,color:"#6b7280"}}><span style={{color:"#60a5fa"}}>V.{p.home}%</span><span>N.{p.draw}%</span><span style={{color:"#fbbf24"}}>D.{p.away}%</span></div>
+          <div style={{display:"flex",borderRadius:4,overflow:"hidden",height:5,marginBottom:3}}><div style={{flex:p.home,background:"#3b82f6"}}/><div style={{flex:p.draw,background:"#374151"}}/><div style={{flex:p.away,background:"#f59e0b"}}/></div>
+          <div style={{display:"flex",justifyContent:"space-between",fontSize:11,position:"relative"}}>
+            <span style={{color:"#60a5fa"}}>V.{p.home}%</span>
+            <span style={{position:"absolute",left:`${p.home+p.draw/2}%`,transform:"translateX(-50%)",color:"#6b7280",fontSize:9}}>{p.draw}%</span>
+            <span style={{color:"#fbbf24"}}>D.{p.away}%</span>
+          </div>
         </div>);})}
       </div>
       <div style={{fontSize:11,color:"#6b7280",textTransform:"uppercase",letterSpacing:2,marginBottom:12}}>Chances par tour</div>

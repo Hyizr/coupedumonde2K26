@@ -1050,7 +1050,7 @@ export default function App(){
               <div style={{display:"flex",alignItems:"center",gap:5}}>
                 <Flag country="Canada" size={20}/><Flag country="États-Unis" size={20}/><Flag country="Mexique" size={20}/>
               </div>
-              <div style={{display:"flex",alignItems:"center",gap:5,fontSize:11,color:apiOk?"#22c55e":"#f59e0b",background:"rgba(0,0,0,0.2)",padding:"4px 10px",borderRadius:18}}>
+              <div className="live-badge" style={{display:"flex",alignItems:"center",gap:5,fontSize:11,color:apiOk?"#22c55e":"#f59e0b",background:"rgba(0,0,0,0.2)",padding:"4px 10px",borderRadius:18}}>
                 <span style={{width:6,height:6,borderRadius:"50%",background:apiOk?"#22c55e":"#f59e0b",display:"block",animation:"pulse 2s infinite"}}/>
                 {apiOk?"Live":"Local"}
               </div>
@@ -1074,7 +1074,7 @@ export default function App(){
       <button
         className="burger-btn"
         onClick={()=>setMenuOpen(o=>!o)}
-        style={{position:"fixed",top:12,right:14,zIndex:200,background:"rgba(7,17,31,0.95)",border:"1px solid rgba(99,179,237,0.25)",borderRadius:8,padding:"8px 10px",cursor:"pointer",display:"flex",flexDirection:"column",gap:5,alignItems:"center",justifyContent:"center",boxShadow:"0 2px 12px rgba(0,0,0,0.4)"}}
+        style={{position:"fixed",top:14,right:16,zIndex:200,background:"rgba(7,17,31,0.95)",border:"1px solid rgba(99,179,237,0.25)",borderRadius:8,padding:"8px 10px",cursor:"pointer",display:"flex",flexDirection:"column",gap:5,alignItems:"center",justifyContent:"center",boxShadow:"0 2px 12px rgba(0,0,0,0.4)"}}
       >
         <span style={{display:"block",width:20,height:2,background:menuOpen?"#63b3ed":"#9ca3af",borderRadius:2,transition:"all .25s",transform:menuOpen?"rotate(45deg) translate(4px,4px)":"none"}}/>
         <span style={{display:"block",width:20,height:2,background:menuOpen?"transparent":"#9ca3af",borderRadius:2,transition:"all .25s",opacity:menuOpen?0:1}}/>
@@ -1141,6 +1141,7 @@ export default function App(){
           .desktop-nav { display: none !important; }
           .burger-btn { display: flex !important; }
           .flags-desktop { display: none !important; }
+          .live-badge { display: none !important; }
         }
         /* Desktop: cacher burger */
         @media (min-width: 769px) {

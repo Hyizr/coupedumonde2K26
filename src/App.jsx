@@ -833,8 +833,13 @@ function LiveModal({match,onClose}){
             <div style={{textAlign:"center"}}><Flag country={match.homeTeam} size={52}/><div style={{fontSize:17,fontWeight:800,color:"#e2e8f0",marginTop:6}}>{match.homeTeam}</div></div>
             <div style={{textAlign:"center"}}>
               {(()=>{
-              const hs=match.homeScore!==null?match.homeScore:(fd?.fixture?.computedScore?.home??null);
-              const as_=match.awayScore!==null?match.awayScore:(fd?.fixture?.computedScore?.away??null);
+              // Priorité: score du match (fetchLive) > score de l'API détail > VS
+              const hs=match.homeScore!==null&&match.homeScore!==undefined?match.homeScore
+                      :fd?.fixture?.score?.fullTime?.home!==null&&fd?.fixture?.score?.fullTime?.home!==undefined?fd.fixture.score.fullTime.home
+                      :null;
+              const as_=match.awayScore!==null&&match.awayScore!==undefined?match.awayScore
+                       :fd?.fixture?.score?.fullTime?.away!==null&&fd?.fixture?.score?.fullTime?.away!==undefined?fd.fixture.score.fullTime.away
+                       :null;
               if(hs!==null&&as_!==null){
                 return<div style={{fontSize:44,fontWeight:900,color:"#fff",letterSpacing:-2}}>{hs} - {as_}</div>;
               }
@@ -869,7 +874,7 @@ function LiveModal({match,onClose}){
                 <div style={{display:"flex",justifyContent:"space-between",fontSize:11,color:"#9ca3af",marginBottom:3}}><span style={{color:"#60a5fa"}}>{s.value??0}</span><span style={{fontSize:10,color:"#4b5563"}}>{s.type}</span><span style={{color:"#fbbf24"}}>{av??0}</span></div>
                 <div style={{display:"flex",borderRadius:3,overflow:"hidden",height:3}}><div style={{flex:hv/tot,background:"#3b82f6"}}/><div style={{flex:avn/tot,background:"#f59e0b"}}/></div>
               </div>);
-            }):<div style={{color:"#4b5563",fontSize:13,padding:"16px 0"}}>{match.homeScore===null?"Stats disponibles au coup d'envoi.":"Aucune statistique disponible."}</div>}
+            }):<div style={{color:"#4b5563",fontSize:13,padding:"16px 0"}}>{match.homeScore===null?"Les statistiques seront disponibles lors du prochain match.":"Score: "+((match.homeScore??fd?.fixture?.score?.fullTime?.home)??"?")+" - "+((match.awayScore??fd?.fixture?.score?.fullTime?.away)??"?")+" · Données détaillées non incluses dans le plan API gratuit."}</div>}
           </div>
           <div>
             <div style={{fontSize:12,color:"#6b7280",textTransform:"uppercase",letterSpacing:2,marginBottom:12}}>Événements</div>
@@ -879,7 +884,7 @@ function LiveModal({match,onClose}){
                 <span>{ev.type==="Goal"?"⚽":ev.type==="subst"?"🔄":ev.detail==="Yellow Card"?"🟨":"🟥"}</span>
                 <span>{ev.player?.name}</span><span style={{color:"#4b5563",fontSize:10}}>({ev.team?.name})</span>
               </div>)}
-            </div>:<div style={{color:"#4b5563",fontSize:13,padding:"16px 0"}}>{match.homeScore===null?"Événements en direct à venir.":"Aucun événement."}</div>}
+            </div>:<div style={{color:"#4b5563",fontSize:13,padding:"16px 0"}}>{match.homeScore===null?"Les événements apparaîtront lors du prochain match live.":"Buts & événements non disponibles sur le plan gratuit football-data.org."}</div>}
             <div style={{fontSize:12,color:"#6b7280",textTransform:"uppercase",letterSpacing:2,margin:"16px 0 12px"}}>Compositions</div>
             {fd&&fd.lineups.length>0?<div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
               {fd.lineups.map((lu,i)=><div key={i}><div style={{fontSize:11,color:"#9ca3af",marginBottom:5,display:"flex",alignItems:"center",gap:5}}><Flag country={i===0?match.homeTeam:match.awayTeam} size={14}/>{lu.formation}</div><PitchView lineup={lu}/></div>)}
@@ -1216,12 +1221,18 @@ export default function App(){
                 // score.regularTime ou score.halfTime pendant le match
                 const ft=m.score?.fullTime;
                 const ht=m.score?.halfTime;
-                const hs=(ft?.home!==null&&ft?.home!==undefined)?ft.home:(ht?.home!==null&&ht?.home!==undefined)?ht.home:null;
-                const as_=(ft?.away!==null&&ft?.away!==undefined)?ft.away:(ht?.away!==null&&ht?.away!==undefined)?ht.away:null;
+                // Lire le score depuis football-data.org
+                const hsNew=(ft?.home!==null&&ft?.home!==undefined)?ft.home
+                           :(ht?.home!==null&&ht?.home!==undefined)?ht.home:null;
+                const asNew=(ft?.away!==null&&ft?.away!==undefined)?ft.away
+                           :(ht?.away!==null&&ht?.away!==undefined)?ht.away:null;
+                // NE JAMAIS écraser un score déjà présent par null
+                const hsFinal=hsNew!==null?hsNew:upd[idx].homeScore;
+                const asFinal=asNew!==null?asNew:upd[idx].awayScore;
                 upd[idx]={...upd[idx],
                   apiMatchId:m.id,
-                  homeScore:hs,
-                  awayScore:as_,
+                  homeScore:hsFinal,
+                  awayScore:asFinal,
                   status:st,
                   elapsed:m.minute||null
                 };

@@ -595,8 +595,8 @@ function Loading({onDone}){
         <div style={{position:"absolute",inset:0,display:"flex",alignItems:"center",justifyContent:"center",fontSize:30}}>⚽</div>
       </div>
       <div style={{textAlign:"center"}}>
-        <div style={{fontSize:26,fontWeight:900,background:"linear-gradient(135deg,#63b3ed,#90cdf4)",WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent"}}>COUPE DU MONDE FIFA</div>
-        <div style={{fontSize:13,color:"#4fc3f7",letterSpacing:5,marginTop:4}}>2026</div>
+        <div style={{fontSize:26,fontWeight:900,background:"linear-gradient(135deg,#63b3ed,#90cdf4)",WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent"}}>COUPE DU MONDE 2026</div>
+        <div style={{fontSize:13,color:"#4fc3f7",letterSpacing:5,marginTop:4}}>BY AMADHY</div>
         <div style={{marginTop:12,color:"#374151",fontSize:12}}>Chargement des données…</div>
         <div style={{marginTop:10,width:180,height:3,background:"rgba(99,179,237,0.08)",borderRadius:2,overflow:"hidden",margin:"10px auto 0"}}>
           <div style={{height:"100%",background:"#63b3ed",width:`${p}%`,transition:"width 0.1s"}}/>
@@ -712,7 +712,7 @@ function ConfTab({fixtures}){
   });
   return(<div>
     <div style={{fontSize:20,fontWeight:800,color:"#e2e8f0",marginBottom:4}}>Calendrier des matchs</div>
-    <div style={{color:"#6b7280",fontSize:13,marginBottom:18}}>Heure française (Paris) · Cliquer pour les stats en direct</div>
+    <div style={{color:"#6b7280",fontSize:13,marginBottom:18}}>Heure française (Paris) · Mise à jour automatique toutes les 60s</div>
     <div style={{display:"flex",gap:7,marginBottom:14,flexWrap:"wrap"}}>
       {[["all","Tous"],["m6","📺 M6"],["live","🔴 Live"]].map(([id,lbl])=>(
         <button key={id} onClick={()=>setFilter(id)} style={{display:"flex",alignItems:"center",gap:6,padding:"7px 16px",borderRadius:7,fontSize:13,fontWeight:600,cursor:"pointer",border:filter==="france"?"none":filter===id?"none":"1px solid rgba(99,179,237,0.15)",background:filter===id?"linear-gradient(135deg,#2563eb,#3b82f6)":"rgba(9,16,28,0.7)",color:filter===id?"#fff":"#9ca3af",fontFamily:"inherit",transition:"all .12s"}}>{lbl}</button>
@@ -732,7 +732,7 @@ function ConfTab({fixtures}){
           <span style={{fontSize:12,color:"#6b7280",fontWeight:600,textTransform:"capitalize",whiteSpace:"nowrap"}}>{lbl}</span>
           <div style={{height:1,flex:1,background:"rgba(99,179,237,0.08)"}}/>
         </div>
-        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(300px,1fr))",gap:10}}>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(min(300px,100%),1fr))",gap:10}}>
           {ms.map(m=><MatchCard key={m.id} match={m}/>)}
         </div>
       </div>);
@@ -754,7 +754,7 @@ function PoulesTab({fixtures}){
         <button key={g} onClick={()=>setSel(g)} style={{padding:"7px 14px",borderRadius:7,fontWeight:700,fontSize:13,border:sel===g?"none":"1px solid rgba(99,179,237,0.12)",background:sel===g?"linear-gradient(135deg,#2563eb,#3b82f6)":"rgba(9,16,28,0.7)",color:sel===g?"#fff":"#9ca3af",cursor:"pointer",fontFamily:"inherit",transition:"all .12s"}}>Gr.{g}</button>
       ))}
     </div>
-    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:18}}>
+    <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(340px,1fr))",gap:18}}>
       {/* Classement */}
       <div style={{background:"#0a111e",border:"1px solid rgba(99,179,237,0.12)",borderRadius:14,overflow:"hidden"}}>
         <div style={{padding:"12px 18px",borderBottom:"1px solid rgba(99,179,237,0.08)",background:"rgba(99,179,237,0.03)",fontSize:14,fontWeight:700,color:"#e2e8f0"}}>Classement — Groupe {sel}</div>
@@ -854,12 +854,12 @@ function TableauTab({fixtures}){
       {[1,2,3,4].map(i=><BracketMatch key={i} label={`Quart de finale ${i}`} date={i<=2?"9 juil.":"11 juil."}/>)}
     </div>
     {secHd("💥 Demi-finales — 15 & 16 juillet 2026")}
-    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:9}}>
+    <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(280px,1fr))",gap:9}}>
       <BracketMatch label="Demi-finale 1" date="15 juil. · Dallas" onM6={true}/>
       <BracketMatch label="Demi-finale 2" date="16 juil. · Atlanta" onM6={true}/>
     </div>
     {secHd("🌟 Finale & 3e place — 18 & 19 juillet 2026","#fbbf24")}
-    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:9}}>
+    <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(280px,1fr))",gap:9}}>
       <BracketMatch label="Match pour la 3e place" date="18 juil. · Miami"/>
       <BracketMatch label="🏆 FINALE" date="19 juil. · MetLife Stadium, New York" onM6={true}/>
     </div>
@@ -894,7 +894,7 @@ function EffectifsTab(){
           </div>
         </div>
       </div>
-      {sq?<div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(200px,1fr))",gap:16}}>
+      {sq?<div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(min(200px,100%),1fr))",gap:12}}>
         {["gardiens","défenseurs","milieux","attaquants"].filter(k=>sq[k]).map(k=><div key={k}>
           <div style={{fontSize:11,color:"#6b7280",textTransform:"uppercase",letterSpacing:2,marginBottom:8,fontWeight:700}}>{posL[k]}</div>
           {sq[k].map((p,i)=><div key={i} style={{background:"rgba(99,179,237,0.04)",border:"1px solid rgba(99,179,237,0.07)",borderRadius:6,padding:"6px 10px",fontSize:12,color:"#e2e8f0",marginBottom:4}}>{p}</div>)}
@@ -911,7 +911,7 @@ function ProbTab(){
   const total=sorted.reduce((s,[,v])=>s+v,0);
   return(<div>
     <div style={{fontSize:20,fontWeight:800,color:"#e2e8f0",marginBottom:4}}>Probabilités de victoire finale</div>
-    <div style={{color:"#6b7280",fontSize:13,marginBottom:18}}>Moyenne Opta · Gracenote · Betfair · Unibet</div>
+    <div style={{color:"#6b7280",fontSize:13,marginBottom:18}}>Probabilités indicatives basées sur les cotes moyennes</div>
     {sorted.map(([team,prob],i)=>{
       const pct=(prob/total*100).toFixed(1);
       const col=i===0?"#fbbf24":i<3?"#63b3ed":"#9ca3af";
@@ -1038,12 +1038,12 @@ export default function App(){
       {/* HEADER */}
       <header style={{background:"rgba(7,17,31,0.97)",borderBottom:"1px solid rgba(99,179,237,0.1)",position:"sticky",top:0,zIndex:100}}>
         <div style={{maxWidth:1200,margin:"0 auto",padding:"0 20px"}}>
-          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",height:60}}>
+          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",height:60,flexWrap:"wrap"}}>
             <div style={{display:"flex",alignItems:"center",gap:12}}>
               <span style={{fontSize:26}}>⚽</span>
               <div>
-                <div style={{fontWeight:900,fontSize:17,background:"linear-gradient(135deg,#63b3ed,#90cdf4)",WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent"}}>COUPE DU MONDE FIFA</div>
-                <div style={{fontSize:10,color:"#374151",letterSpacing:4,marginTop:-1}}>2026 · CANADA · USA · MEXIQUE</div>
+                <div style={{fontWeight:900,fontSize:"clamp(12px,3vw,17px)",background:"linear-gradient(135deg,#63b3ed,#90cdf4)",WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent"}}>COUPE DU MONDE 2026</div>
+                <div style={{fontSize:10,color:"#374151",letterSpacing:4,marginTop:-1}}>BY AMADHY</div>
               </div>
             </div>
             <div style={{display:"flex",alignItems:"center",gap:10}}>
@@ -1067,7 +1067,7 @@ export default function App(){
       </header>
 
       {/* MAIN */}
-      <main style={{maxWidth:1200,margin:"0 auto",padding:"28px 20px"}}>
+      <main style={{maxWidth:1200,margin:"0 auto",padding:"clamp(12px,3vw,28px) clamp(10px,3vw,20px)"}}>
         {tab==="conf"&&<ConfTab fixtures={fixtures}/>}
         {tab==="poules"&&<PoulesTab fixtures={fixtures}/>}
         {tab==="tableau"&&<TableauTab fixtures={fixtures}/>}
@@ -1077,7 +1077,6 @@ export default function App(){
       </main>
 
       <footer style={{borderTop:"1px solid rgba(99,179,237,0.06)",padding:"18px 20px",textAlign:"center",color:"#1e293b",fontSize:11,marginTop:36}}>
-        <div>API-Football · Mise à jour automatique toutes les 60s · M6 : 54 matchs gratuits · beIN Sports : 104 matchs</div>
         <div style={{marginTop:3}}>11 juin – 19 juillet 2026 · 48 équipes · 104 matchs · 16 stades · Canada, USA, Mexique</div>
       </footer>
 
@@ -1089,8 +1088,12 @@ export default function App(){
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: rgba(99,179,237,0.18); border-radius: 3px; }
         @keyframes spin { to { transform: rotate(360deg); } }
-        @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:.3; } }
+        @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: .3; } }
         body { background: #060d1a; }
+        @media (max-width: 640px) {
+          .main-content { padding: 14px 12px !important; }
+          .match-grid { grid-template-columns: 1fr !important; }
+        }
       `}</style>
     </div>
   );

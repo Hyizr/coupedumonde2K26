@@ -1046,15 +1046,21 @@ export default function App(){
                 <div style={{fontSize:10,color:"#90cdf4",letterSpacing:4,marginTop:-1,fontWeight:600}}>BY AMADHY</div>
               </div>
             </div>
-            <div style={{display:"flex",alignItems:"center",gap:10}}>
-              <div style={{display:"flex",alignItems:"center",gap:5}}>
-                <Flag country="Canada" size={20}/><Flag country="États-Unis" size={20}/><Flag country="Mexique" size={20}/>
+            <div style={{display:"flex",alignItems:"center",gap:8}}>
+              <div className="flags-live-desktop" style={{display:"flex",alignItems:"center",gap:8}}>
+                <div style={{display:"flex",alignItems:"center",gap:3}}>
+                  <Flag country="Canada" size={15}/><Flag country="États-Unis" size={15}/><Flag country="Mexique" size={15}/>
+                </div>
+                <div style={{display:"flex",alignItems:"center",gap:4,fontSize:10,color:apiOk?"#22c55e":"#f59e0b",background:"rgba(0,0,0,0.2)",padding:"3px 8px",borderRadius:14}}>
+                  <span style={{width:5,height:5,borderRadius:"50%",background:apiOk?"#22c55e":"#f59e0b",display:"block",animation:"pulse 2s infinite"}}/>
+                  {apiOk?"Live":"Local"}
+                </div>
               </div>
-              <div className="live-badge" style={{display:"flex",alignItems:"center",gap:5,fontSize:11,color:apiOk?"#22c55e":"#f59e0b",background:"rgba(0,0,0,0.2)",padding:"4px 10px",borderRadius:18}}>
-                <span style={{width:6,height:6,borderRadius:"50%",background:apiOk?"#22c55e":"#f59e0b",display:"block",animation:"pulse 2s infinite"}}/>
-                {apiOk?"Live":"Local"}
-              </div>
-
+              <button className="burger-btn" onClick={()=>setMenuOpen(o=>!o)} style={{background:"rgba(99,179,237,0.08)",border:"1px solid rgba(99,179,237,0.2)",borderRadius:8,padding:"8px 10px",cursor:"pointer",display:"flex",flexDirection:"column",gap:5,alignItems:"center",justifyContent:"center"}}>
+                <span style={{display:"block",width:20,height:2,background:menuOpen?"#63b3ed":"#c0cdd8",borderRadius:2,transition:"all .25s",transform:menuOpen?"rotate(45deg) translate(4px,4px)":"none"}}/>
+                <span style={{display:"block",width:20,height:2,background:menuOpen?"transparent":"#c0cdd8",borderRadius:2,transition:"all .25s"}}/>
+                <span style={{display:"block",width:20,height:2,background:menuOpen?"#63b3ed":"#c0cdd8",borderRadius:2,transition:"all .25s",transform:menuOpen?"rotate(-45deg) translate(4px,-4px)":"none"}}/>
+              </button>
             </div>
           </div>
           {/* Nav desktop — cachée sur mobile */}
@@ -1070,17 +1076,6 @@ export default function App(){
       </header>
 
       {/* Menu mobile burger — overlay */}
-      {/* Burger fixe en haut à droite — mobile only */}
-      <button
-        className="burger-btn"
-        onClick={()=>setMenuOpen(o=>!o)}
-        style={{position:"fixed",top:14,right:16,zIndex:200,background:"rgba(7,17,31,0.95)",border:"1px solid rgba(99,179,237,0.25)",borderRadius:8,padding:"8px 10px",cursor:"pointer",display:"flex",flexDirection:"column",gap:5,alignItems:"center",justifyContent:"center",boxShadow:"0 2px 12px rgba(0,0,0,0.4)"}}
-      >
-        <span style={{display:"block",width:20,height:2,background:menuOpen?"#63b3ed":"#9ca3af",borderRadius:2,transition:"all .25s",transform:menuOpen?"rotate(45deg) translate(4px,4px)":"none"}}/>
-        <span style={{display:"block",width:20,height:2,background:menuOpen?"transparent":"#9ca3af",borderRadius:2,transition:"all .25s",opacity:menuOpen?0:1}}/>
-        <span style={{display:"block",width:20,height:2,background:menuOpen?"#63b3ed":"#9ca3af",borderRadius:2,transition:"all .25s",transform:menuOpen?"rotate(-45deg) translate(4px,-4px)":"none"}}/>
-      </button>
-
       {menuOpen&&(
         <div style={{position:"fixed",top:0,left:0,right:0,bottom:0,zIndex:99,background:"rgba(0,0,0,0.5)"}} onClick={()=>setMenuOpen(false)}>
           <div style={{position:"absolute",top:0,right:0,bottom:0,width:"75vw",maxWidth:280,background:"#0a111e",borderLeft:"1px solid rgba(99,179,237,0.15)",display:"flex",flexDirection:"column",paddingTop:20}} onClick={e=>e.stopPropagation()}>
@@ -1136,14 +1131,13 @@ export default function App(){
         @keyframes spin { to { transform: rotate(360deg); } }
         @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: .3; } }
         body { background: #060d1a; }
-        /* Mobile: cacher nav desktop, montrer burger */
+        /* Mobile */
         @media (max-width: 768px) {
           .desktop-nav { display: none !important; }
           .burger-btn { display: flex !important; }
-          .flags-desktop { display: none !important; }
-          .live-badge { display: none !important; }
+          .flags-live-desktop { display: none !important; }
         }
-        /* Desktop: cacher burger */
+        /* Desktop */
         @media (min-width: 769px) {
           .burger-btn { display: none !important; }
         }

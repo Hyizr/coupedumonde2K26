@@ -3,6 +3,51 @@ import { useState, useEffect, useCallback, useRef } from "react";
 const API_KEY = "f0df5fe54c4c5f63c8cb2ee1f3e58acb";
 const API_BASE = "https://v3.football.api-sports.io";
 
+// Mapping noms FR → noms API-Football (anglais)
+// Utilisé pour matcher les fixtures de l'API avec nos noms français
+const FR_TO_EN = {
+  "Mexique":"Mexico","Afrique du Sud":"South Africa","Corée du Sud":"South Korea",
+  "République tchèque":"Czech Republic","Canada":"Canada","Bosnie-Herzégovine":"Bosnia",
+  "Qatar":"Qatar","Suisse":"Switzerland","Brésil":"Brazil","Maroc":"Morocco",
+  "Haïti":"Haiti","Écosse":"Scotland","États-Unis":"United States","Paraguay":"Paraguay",
+  "Australie":"Australia","Turquie":"Turkey","Allemagne":"Germany","Curaçao":"Curacao",
+  "Côte d'Ivoire":"Ivory Coast","Équateur":"Ecuador","Pays-Bas":"Netherlands","Japon":"Japan",
+  "Suède":"Sweden","Tunisie":"Tunisia","Belgique":"Belgium","Égypte":"Egypt","Iran":"Iran",
+  "Nouvelle-Zélande":"New Zealand","Espagne":"Spain","Cap-Vert":"Cape Verde",
+  "Arabie Saoudite":"Saudi Arabia","Uruguay":"Uruguay","France":"France","Sénégal":"Senegal",
+  "Irak":"Iraq","Norvège":"Norway","Argentine":"Argentina","Algérie":"Algeria",
+  "Autriche":"Austria","Jordanie":"Jordan","Portugal":"Portugal","RD Congo":"DR Congo",
+  "Ouzbékistan":"Uzbekistan","Colombie":"Colombia","Angleterre":"England","Croatie":"Croatia",
+  "Ghana":"Ghana","Panama":"Panama"
+};
+
+// Vérifie si un nom API correspond à un nom français
+function matchTeam(apiName, frName) {
+  const en = FR_TO_EN[frName] || frName;
+  const api = apiName.toLowerCase();
+  const enL = en.toLowerCase();
+  const frL = frName.toLowerCase();
+  // Correspondance exacte ou partielle
+  if (api === enL || api === frL) return true;
+  if (api.includes(enL.slice(0,5)) || enL.includes(api.slice(0,5))) return true;
+  if (api.includes(frL.slice(0,5)) || frL.includes(api.slice(0,5))) return true;
+  // Cas spéciaux
+  if (frName === "États-Unis" && (api.includes("united states") || api.includes("usa"))) return true;
+  if (frName === "Corée du Sud" && (api.includes("korea") || api.includes("south korea"))) return true;
+  if (frName === "République tchèque" && (api.includes("czech") || api.includes("czechia"))) return true;
+  if (frName === "Côte d'Ivoire" && (api.includes("ivory") || api.includes("cote"))) return true;
+  if (frName === "Bosnie-Herzégovine" && api.includes("bosnia")) return true;
+  if (frName === "Arabie Saoudite" && api.includes("saudi")) return true;
+  if (frName === "RD Congo" && (api.includes("congo") || api.includes("dr congo"))) return true;
+  if (frName === "Cap-Vert" && api.includes("cape verde")) return true;
+  if (frName === "Nouvelle-Zélande" && api.includes("new zealand")) return true;
+  if (frName === "Pays-Bas" && api.includes("netherlands")) return true;
+  if (frName === "Afrique du Sud" && api.includes("south africa")) return true;
+  if (frName === "Ouzbékistan" && api.includes("uzbek")) return true;
+  return false;
+}
+
+
 const FLAGS = {
   "France": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzIDIiPjxyZWN0IHdpZHRoPSIxIiBoZWlnaHQ9IjIiIGZpbGw9IiMwMDIzOTUiLz48cmVjdCB4PSIxIiB3aWR0aD0iMSIgaGVpZ2h0PSIyIiBmaWxsPSIjZmZmIi8+PHJlY3QgeD0iMiIgd2lkdGg9IjEiIGhlaWdodD0iMiIgZmlsbD0iI0VEMjkzOSIvPjwvc3ZnPg==",
   "Espagne": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzIDIiPjxyZWN0IHdpZHRoPSIzIiBoZWlnaHQ9IjIiIGZpbGw9IiNjNjBiMWUiLz48cmVjdCB5PSIwLjUiIHdpZHRoPSIzIiBoZWlnaHQ9IjEiIGZpbGw9IiNmZmM0MDAiLz48L3N2Zz4=",
@@ -635,14 +680,15 @@ function LiveModal({match,onClose}){
   const load=useCallback(async()=>{
     if(!match)return;
     try{
-      const r=await fetch(`${API_BASE}/fixtures?league=1&season=2026&date=${match.date}`,{headers:{"x-apisports-key":API_KEY}});
-      const j=await r.json();
-      const found=(j.response||[]).find(fx=>{
-        const hn=fx.teams.home.name.toLowerCase(),mh=match.homeTeam.toLowerCase();
-        return hn.slice(0,4)===mh.slice(0,4)||hn.includes(mh.slice(0,4))||mh.includes(hn.slice(0,4));
-      });
-      if(found){
-        const fid=found.fixture.id;
+      let fid = match.apiFixtureId || null;
+      if(!fid){
+        // Fallback: chercher par date et nom d'équipe
+        const r=await fetch(`${API_BASE}/fixtures?league=1&season=2026&date=${match.date}`,{headers:{"x-apisports-key":API_KEY}});
+        const j=await r.json();
+        const found=(j.response||[]).find(fx=>matchTeam(fx.teams.home.name, match.homeTeam));
+        if(found) fid=found.fixture.id;
+      }
+      if(fid){
         const[sr,lr,er]=await Promise.all([
           fetch(`${API_BASE}/fixtures/statistics?fixture=${fid}`,{headers:{"x-apisports-key":API_KEY}}),
           fetch(`${API_BASE}/fixtures/lineups?fixture=${fid}`,{headers:{"x-apisports-key":API_KEY}}),
@@ -1033,14 +1079,16 @@ export default function App(){
           setFixtures(prev=>{
             const upd=[...prev];
             j.response.forEach(af=>{
-              const hn=af.teams.home.name.toLowerCase();
-              const idx=upd.findIndex(s=>{
-                const shn=s.homeTeam.toLowerCase();
-                return shn.slice(0,4)===hn.slice(0,4)||hn.includes(shn.slice(0,4))||shn.includes(hn.slice(0,4));
-              });
+              const idx=upd.findIndex(s=>matchTeam(af.teams.home.name, s.homeTeam));
               if(idx!==-1){
                 const st=af.fixture.status||{};
-                upd[idx]={...upd[idx],homeScore:af.goals.home,awayScore:af.goals.away,status:st.short||null,elapsed:st.elapsed||null};
+                upd[idx]={...upd[idx],
+                  apiFixtureId:af.fixture.id,
+                  homeScore:af.goals.home,
+                  awayScore:af.goals.away,
+                  status:st.short||null,
+                  elapsed:st.elapsed||null
+                };
               }
             });
             return upd;

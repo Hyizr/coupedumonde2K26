@@ -708,25 +708,108 @@ function LiveModal({match,onClose}){
     if(!match)return;
     try{
       const mid=match.apiMatchId||null;
-      if(mid){
-        const r=await fetch(`/api/matches?type=match&fixtureId=${mid}`);
+      if(!mid){
+        // Pas encore synchronisé — essayer de récupérer via /api/matches?type=all
+        const r=await fetch("/api/matches?type=all");
+        if(r.ok){
+          const j=await r.json();
+          const found=(j.matches||[]).find(m=>{
+            const hFr=EN_TO_FR[m.homeTeam?.name]||m.homeTeam?.name;
+            return hFr===match.homeTeam;
+          });
+          if(found){
+            // Mettre à jour le match avec l'ID trouvé et réessayer
+            match={...match,apiMatchId:found.id};
+          }
+        }
+      }
+      const mid2=match.apiMatchId||null;
+      if(mid2){
+        const r=await fetch(`/api/matches?type=match&fixtureId=${mid2}`);
         if(!r.ok)throw new Error("match proxy "+r.status);
         const j=await r.json();
-        // Construire les événements depuis football-data.org
+
+        // ─── Score depuis cet appel (au cas où pas encore dans fixtures) ───
+        const ft=j.score?.fullTime;
+        const hs=(ft?.home!==null&&ft?.home!==undefined)?ft.home:null;
+        const as_=(ft?.away!==null&&ft?.away!==undefined)?ft.away:null;
+
+        // ─── Événements ────────────────────────────────────────────────────
         const events=[];
-        (j.goals||[]).forEach(g=>{events.push({time:{elapsed:g.minute},type:"Goal",player:{name:g.scorer?.name||"?"},team:{name:EN_TO_FR[g.team?.name]||g.team?.name}});});
-        (j.bookings||[]).forEach(b=>{events.push({time:{elapsed:b.minute},type:"Card",detail:b.card==="YELLOW_CARD"?"Yellow Card":"Red Card",player:{name:b.player?.name||"?"},team:{name:EN_TO_FR[b.team?.name]||b.team?.name}});});
-        (j.substitutions||[]).forEach(s=>{events.push({time:{elapsed:s.minute},type:"subst",player:{name:s.playerIn?.name||"?"},team:{name:EN_TO_FR[s.team?.name]||s.team?.name}});});
+        (j.goals||[]).forEach(g=>{
+          events.push({
+            time:{elapsed:g.minute},
+            type:"Goal",
+            player:{name:g.scorer?.name||g.scorer?.shortName||"?"},
+            team:{name:EN_TO_FR[g.team?.name]||g.team?.name}
+          });
+        });
+        (j.bookings||[]).forEach(b=>{
+          events.push({
+            time:{elapsed:b.minute},
+            type:"Card",
+            detail:b.card==="YELLOW_CARD"?"Yellow Card":"Red Card",
+            player:{name:b.player?.name||b.player?.shortName||"?"},
+            team:{name:EN_TO_FR[b.team?.name]||b.team?.name}
+          });
+        });
+        (j.substitutions||[]).forEach(s=>{
+          events.push({
+            time:{elapsed:s.minute},
+            type:"subst",
+            player:{name:s.playerIn?.name||s.playerIn?.shortName||"?"},
+            team:{name:EN_TO_FR[s.team?.name]||s.team?.name}
+          });
+        });
         events.sort((a,b)=>(a.time?.elapsed||0)-(b.time?.elapsed||0));
-        // Compositions si dispo
+
+        // ─── Compositions ──────────────────────────────────────────────────
         const lineups=[];
         if(j.homeTeam?.lineup?.length>0){
-          lineups.push({team:{name:match.homeTeam},formation:j.homeTeam.formation||"",startXI:j.homeTeam.lineup.map(p=>({player:{name:p.name,number:p.shirtNumber}}))});
+          lineups.push({
+            team:{name:match.homeTeam},
+            formation:j.homeTeam.formation||"",
+            startXI:(j.homeTeam.lineup||[]).filter(p=>p.position!=="BENCH"&&p.status==="ACTIVE").map(p=>({
+              player:{name:p.name||p.shortName||"?",number:p.shirtNumber||"?"}
+            }))
+          });
         }
         if(j.awayTeam?.lineup?.length>0){
-          lineups.push({team:{name:match.awayTeam},formation:j.awayTeam.formation||"",startXI:j.awayTeam.lineup.map(p=>({player:{name:p.name,number:p.shirtNumber}}))});
+          lineups.push({
+            team:{name:match.awayTeam},
+            formation:j.awayTeam.formation||"",
+            startXI:(j.awayTeam.lineup||[]).filter(p=>p.position!=="BENCH"&&p.status==="ACTIVE").map(p=>({
+              player:{name:p.name||p.shortName||"?",number:p.shirtNumber||"?"}
+            }))
+          });
         }
-        setFd({fixture:j,stats:[],lineups,events});
+
+        // ─── Statistiques adaptées ─────────────────────────────────────────
+        // football-data.org ne fournit pas les stats classiques (possession etc)
+        // On affiche ce qu'on a: buts, cartons, changements par équipe
+        const homeGoals=(j.goals||[]).filter(g=>EN_TO_FR[g.team?.name]===match.homeTeam||g.team?.name===match.homeTeam);
+        const awayGoals=(j.goals||[]).filter(g=>EN_TO_FR[g.team?.name]===match.awayTeam||g.team?.name===match.awayTeam);
+        const homeCards=(j.bookings||[]).filter(b=>EN_TO_FR[b.team?.name]===match.homeTeam||b.team?.name===match.homeTeam);
+        const awayCards=(j.bookings||[]).filter(b=>EN_TO_FR[b.team?.name]===match.awayTeam||b.team?.name===match.awayTeam);
+        const homeSubs=(j.substitutions||[]).filter(s=>EN_TO_FR[s.team?.name]===match.homeTeam||s.team?.name===match.homeTeam);
+        const awaySubs=(j.substitutions||[]).filter(s=>EN_TO_FR[s.team?.name]===match.awayTeam||s.team?.name===match.awayTeam);
+        const stats=[
+          {type:"Buts",homeVal:homeGoals.length,awayVal:awayGoals.length},
+          {type:"Cartons",homeVal:homeCards.length,awayVal:awayCards.length},
+          {type:"Changements",homeVal:homeSubs.length,awayVal:awaySubs.length},
+        ].filter(s=>s.homeVal>0||s.awayVal>0);
+
+        const statsFormatted=stats.length>0?[
+          {statistics:stats.map(s=>({type:s.type,value:s.homeVal}))},
+          {statistics:stats.map(s=>({type:s.type,value:s.awayVal}))}
+        ]:[];
+
+        setFd({
+          fixture:{...j,computedScore:{home:hs,away:as_}},
+          stats:statsFormatted,
+          lineups,
+          events
+        });
       }else{
         setFd({fixture:null,stats:[],lineups:[],events:[]});
       }
@@ -749,7 +832,14 @@ function LiveModal({match,onClose}){
           <div style={{display:"flex",alignItems:"center",justifyContent:"center",gap:22}}>
             <div style={{textAlign:"center"}}><Flag country={match.homeTeam} size={52}/><div style={{fontSize:17,fontWeight:800,color:"#e2e8f0",marginTop:6}}>{match.homeTeam}</div></div>
             <div style={{textAlign:"center"}}>
-              {match.homeScore!==null?<div style={{fontSize:44,fontWeight:900,color:"#fff",letterSpacing:-2}}>{match.homeScore} - {match.awayScore}</div>:<div style={{fontSize:24,color:"#4fc3f7",fontWeight:700}}>VS</div>}
+              {(()=>{
+              const hs=match.homeScore!==null?match.homeScore:(fd?.fixture?.computedScore?.home??null);
+              const as_=match.awayScore!==null?match.awayScore:(fd?.fixture?.computedScore?.away??null);
+              if(hs!==null&&as_!==null){
+                return<div style={{fontSize:44,fontWeight:900,color:"#fff",letterSpacing:-2}}>{hs} - {as_}</div>;
+              }
+              return<div style={{fontSize:24,color:"#4fc3f7",fontWeight:700}}>VS</div>;
+            })()}
               {isLive&&<div style={{display:"flex",alignItems:"center",justifyContent:"center",gap:5,marginTop:4}}><span style={{width:7,height:7,borderRadius:"50%",background:"#ef4444",display:"block",animation:"pulse 1s infinite"}}/><span style={{color:"#ef4444",fontSize:13,fontWeight:700}}>LIVE</span></div>}
               {isDone&&<div style={{color:"#6b7280",fontSize:12,marginTop:4}}>Match terminé</div>}
             </div>
@@ -1122,8 +1212,12 @@ export default function App(){
               const idx=upd.findIndex(s=>s.homeTeam===homeFr);
               if(idx!==-1){
                 const st=FD_STATUS[m.status]||null;
-                const hs=m.score?.fullTime?.home??m.score?.halfTime?.home??null;
-                const as_=m.score?.fullTime?.away??m.score?.halfTime?.away??null;
+                // football-data.org: score.fullTime = {home: N, away: N} après le match
+                // score.regularTime ou score.halfTime pendant le match
+                const ft=m.score?.fullTime;
+                const ht=m.score?.halfTime;
+                const hs=(ft?.home!==null&&ft?.home!==undefined)?ft.home:(ht?.home!==null&&ht?.home!==undefined)?ht.home:null;
+                const as_=(ft?.away!==null&&ft?.away!==undefined)?ft.away:(ht?.away!==null&&ht?.away!==undefined)?ht.away:null;
                 upd[idx]={...upd[idx],
                   apiMatchId:m.id,
                   homeScore:hs,

@@ -1054,16 +1054,7 @@ export default function App(){
                 <span style={{width:6,height:6,borderRadius:"50%",background:apiOk?"#22c55e":"#f59e0b",display:"block",animation:"pulse 2s infinite"}}/>
                 {apiOk?"Live":"Local"}
               </div>
-              {/* Burger — visible mobile seulement via CSS */}
-              <button
-                className="burger-btn"
-                onClick={()=>setMenuOpen(o=>!o)}
-                style={{background:"rgba(99,179,237,0.1)",border:"1px solid rgba(99,179,237,0.2)",borderRadius:8,padding:"7px 9px",cursor:"pointer",display:"flex",flexDirection:"column",gap:5,alignItems:"center",justifyContent:"center"}}
-              >
-                <span style={{display:"block",width:18,height:2,background:"#9ca3af",borderRadius:2,transition:"all .2s",transform:menuOpen?"rotate(45deg) translate(4px,4px)":"none"}}/>
-                <span style={{display:"block",width:18,height:2,background:menuOpen?"transparent":"#9ca3af",borderRadius:2,transition:"all .2s"}}/>
-                <span style={{display:"block",width:18,height:2,background:"#9ca3af",borderRadius:2,transition:"all .2s",transform:menuOpen?"rotate(-45deg) translate(4px,-4px)":"none"}}/>
-              </button>
+
             </div>
           </div>
           {/* Nav desktop — cachée sur mobile */}
@@ -1079,6 +1070,17 @@ export default function App(){
       </header>
 
       {/* Menu mobile burger — overlay */}
+      {/* Burger fixe en haut à droite — mobile only */}
+      <button
+        className="burger-btn"
+        onClick={()=>setMenuOpen(o=>!o)}
+        style={{position:"fixed",top:12,right:14,zIndex:200,background:"rgba(7,17,31,0.95)",border:"1px solid rgba(99,179,237,0.25)",borderRadius:8,padding:"8px 10px",cursor:"pointer",display:"flex",flexDirection:"column",gap:5,alignItems:"center",justifyContent:"center",boxShadow:"0 2px 12px rgba(0,0,0,0.4)"}}
+      >
+        <span style={{display:"block",width:20,height:2,background:menuOpen?"#63b3ed":"#9ca3af",borderRadius:2,transition:"all .25s",transform:menuOpen?"rotate(45deg) translate(4px,4px)":"none"}}/>
+        <span style={{display:"block",width:20,height:2,background:menuOpen?"transparent":"#9ca3af",borderRadius:2,transition:"all .25s",opacity:menuOpen?0:1}}/>
+        <span style={{display:"block",width:20,height:2,background:menuOpen?"#63b3ed":"#9ca3af",borderRadius:2,transition:"all .25s",transform:menuOpen?"rotate(-45deg) translate(4px,-4px)":"none"}}/>
+      </button>
+
       {menuOpen&&(
         <div style={{position:"fixed",top:0,left:0,right:0,bottom:0,zIndex:99,background:"rgba(0,0,0,0.5)"}} onClick={()=>setMenuOpen(false)}>
           <div style={{position:"absolute",top:0,right:0,bottom:0,width:"75vw",maxWidth:280,background:"#0a111e",borderLeft:"1px solid rgba(99,179,237,0.15)",display:"flex",flexDirection:"column",paddingTop:20}} onClick={e=>e.stopPropagation()}>

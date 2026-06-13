@@ -735,7 +735,7 @@ function ConfTab({fixtures}){
   return(<div>
     <div style={{fontSize:20,fontWeight:800,color:"#e2e8f0",marginBottom:4}}>Calendrier des matchs</div>
     <div style={{color:"#6b7280",fontSize:13,marginBottom:18}}>Heure française (Paris) · Mise à jour automatique toutes les 60s</div>
-    <div style={S.infoBar}>
+    <div style={{background:"rgba(99,179,237,0.03)",border:"1px solid rgba(99,179,237,0.07)",borderRadius:8,padding:"7px 12px",marginBottom:14,fontSize:11,color:"#6b7280"}}>
       📺 <strong style={{color:"#fb923c"}}>M6</strong> — Matchs France, grosses affiches, demi-finales et finale gratuits · <strong style={{color:"#63b3ed"}}>beIN Sports</strong> — 104 matchs intégralité
     </div>
     {Object.keys(grouped).sort().map(date=>{

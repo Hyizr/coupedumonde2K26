@@ -998,6 +998,7 @@ export default function App(){
   const[fixtures,setFixtures]=useState(FIXTURES_INIT);
   const[apiOk,setApiOk]=useState(false);
   const[menuOpen,setMenuOpen]=useState(false);
+  const liveMatches=fixtures.filter(m=>["1H","2H","HT","ET"].includes(m.status)).length;
 
   useEffect(()=>{
     if(!loaded)return;
@@ -1070,8 +1071,8 @@ export default function App(){
                   <Flag country="Canada" size={15}/><Flag country="États-Unis" size={15}/><Flag country="Mexique" size={15}/>
                 </div>
                 <div style={{display:"flex",alignItems:"center",gap:4,fontSize:10,color:apiOk?"#22c55e":"#f59e0b",background:"rgba(0,0,0,0.2)",padding:"3px 8px",borderRadius:14}}>
-                  <span style={{width:5,height:5,borderRadius:"50%",background:apiOk?"#22c55e":"#f59e0b",display:"block",animation:"pulse 2s infinite"}}/>
-                  {apiOk?"Live":"Local"}
+                  <span style={{width:5,height:5,borderRadius:"50%",background:liveMatches>0?"#ef4444":apiOk?"#22c55e":"#f59e0b",display:"block",animation:`pulse ${liveMatches>0?"0.8s":"2s"} infinite`}}/>
+                  {liveMatches>0?`${liveMatches} LIVE`:apiOk?"Sync":"Local"}
                 </div>
               </div>
               <button className="burger-btn" onClick={()=>setMenuOpen(o=>!o)} style={{background:"rgba(99,179,237,0.08)",border:"1px solid rgba(99,179,237,0.2)",borderRadius:8,padding:"8px 10px",cursor:"pointer",display:"flex",flexDirection:"column",gap:5,alignItems:"center",justifyContent:"center"}}>

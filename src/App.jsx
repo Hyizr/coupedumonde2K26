@@ -625,7 +625,7 @@ function MatchCard({match}){
   const d=new Date(match.date+"T12:00:00");
   const ds=d.toLocaleDateString("fr-FR",{weekday:"short",day:"numeric",month:"short"});
   const hasSc=match.homeScore!==null;
-  const isLive=["1H","2H","HT","ET","IN_PLAY","PAUSED","LIVE"].includes(match.status);
+  const isLive=["1H","2H","HT","ET","IN_PLAY","PAUSED","LIVE"].includes(match.status)||["IN_PLAY","PAUSED"].includes(match.rawStatus);
   const isDone=["FT","AET","PEN"].includes(match.status);
   const onM6=M6.has(match.id);
   const style={background:isLive?"rgba(239,68,68,0.06)":"#0a111e",border:`1px solid ${isLive?"rgba(239,68,68,0.28)":"rgba(99,179,237,0.1)"}`,borderRadius:14,padding:"16px 18px",marginBottom:10};
@@ -998,7 +998,7 @@ export default function App(){
   const[fixtures,setFixtures]=useState(FIXTURES_INIT);
   const[apiOk,setApiOk]=useState(true);
   const[menuOpen,setMenuOpen]=useState(false);
-  const liveMatches=fixtures.filter(m=>["1H","2H","HT","ET","IN_PLAY","PAUSED"].includes(m.status)).length;
+  const liveMatches=fixtures.filter(m=>["1H","2H","HT","ET","IN_PLAY","PAUSED"].includes(m.status)||["IN_PLAY","PAUSED"].includes(m.rawStatus)).length;
 
   useEffect(()=>{
     if(!loaded)return;
@@ -1040,18 +1040,20 @@ export default function App(){
                   homeScore:hsFinal,
                   awayScore:asFinal,
                   status:stFinal,
+                  rawStatus:m.status,
                   elapsed:m.minute||null
                 };
               }
             });
-            return upd;
+            // Forcer React à détecter le changement
+            return [...upd];
           });
           setApiOk(true);
         }
       }catch(e){console.warn("API proxy error:",e);}
     };
     fetchLive();
-    const iv=setInterval(fetchLive,60000);
+    const iv=setInterval(fetchLive,30000);
     return()=>clearInterval(iv);
   },[loaded]);
 

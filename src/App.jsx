@@ -467,7 +467,7 @@ const SQUADS = {
   },
 };
 
-const M6 = new Set(["a1","a2","a3","a4","b1","b4","c1","c3","d1","d3","e1","e3","f1","f5","g1","g3","h1","h2","h3","h5","i1","i2","i3","i4","i5","i6","j1","j3","k1","k3","k5","l1","l3","l5"]);
+const M6 = new Set(["a1","a3","b1","b2","b3","b6","c1","c3","c5","d3","e1","e4","e6","f1","f3","f6","g1","g3","h1","h2","h3","i1","i2","i3","i5","j3","k1","k3","k5","l1","l3","l5","l6"]);
 
 const WIN = {
   "France":13.5,"Espagne":12,"Brésil":11.5,"Argentine":11,"Angleterre":9.5,"Allemagne":8.5,
@@ -744,7 +744,7 @@ function ConfTab({fixtures}){
       <button onClick={()=>setFilter("france")} style={{display:"flex",alignItems:"center",gap:6,padding:"7px 14px",borderRadius:7,fontSize:13,fontWeight:600,cursor:"pointer",border:filter==="france"?"none":"1px solid rgba(99,179,237,0.15)",background:filter==="france"?"linear-gradient(135deg,#2563eb,#3b82f6)":"rgba(9,16,28,0.7)",color:filter==="france"?"#fff":"#9ca3af",fontFamily:"inherit",transition:"all .12s"}}><Flag country="France" size={18}/>France</button>
     </div>
     <div style={{background:"rgba(99,179,237,0.03)",border:"1px solid rgba(99,179,237,0.08)",borderRadius:9,padding:"9px 14px",marginBottom:18,fontSize:12,color:"#6b7280"}}>
-      📺 <strong style={{color:"#fb923c"}}>M6</strong> — 54 matchs gratuits (France, demi-finales, finale) · <strong style={{color:"#63b3ed"}}>beIN Sports</strong> — 104 matchs intégralité
+      📺 <strong style={{color:"#fb923c"}}>M6</strong> — Matchs France, grosses affiches, demi-finales et finale gratuits · <strong style={{color:"#63b3ed"}}>beIN Sports</strong> — 104 matchs intégralité
     </div>
     {Object.keys(grouped).sort().map(date=>{
       const d=new Date(date+"T12:00:00");

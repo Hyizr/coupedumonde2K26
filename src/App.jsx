@@ -625,7 +625,7 @@ function MatchCard({match}){
   const d=new Date(match.date+"T12:00:00");
   const ds=d.toLocaleDateString("fr-FR",{weekday:"short",day:"numeric",month:"short"});
   const hasSc=match.homeScore!==null;
-  const isLive=["1H","2H","HT","ET"].includes(match.status);
+  const isLive=["1H","2H","HT","ET","IN_PLAY","PAUSED","LIVE"].includes(match.status);
   const isDone=["FT","AET","PEN"].includes(match.status);
   const onM6=M6.has(match.id);
   const style={background:isLive?"rgba(239,68,68,0.06)":"#0a111e",border:`1px solid ${isLive?"rgba(239,68,68,0.28)":"rgba(99,179,237,0.1)"}`,borderRadius:14,padding:"16px 18px",marginBottom:10};
@@ -996,9 +996,9 @@ export default function App(){
   const[loaded,setLoaded]=useState(false);
   const[tab,setTab]=useState("conf");
   const[fixtures,setFixtures]=useState(FIXTURES_INIT);
-  const[apiOk,setApiOk]=useState(false);
+  const[apiOk,setApiOk]=useState(true);
   const[menuOpen,setMenuOpen]=useState(false);
-  const liveMatches=fixtures.filter(m=>["1H","2H","HT","ET"].includes(m.status)).length;
+  const liveMatches=fixtures.filter(m=>["1H","2H","HT","ET","IN_PLAY","PAUSED"].includes(m.status)).length;
 
   useEffect(()=>{
     if(!loaded)return;
@@ -1020,21 +1020,26 @@ export default function App(){
                 const st=FD_STATUS[m.status]||null;
                 // football-data.org: score.fullTime = {home: N, away: N} après le match
                 // score.regularTime ou score.halfTime pendant le match
+                // football-data.org: score selon statut
+                // IN_PLAY/PAUSED → score dans regularTime ou fullTime
+                // FINISHED → score dans fullTime
                 const ft=m.score?.fullTime;
+                const rt=m.score?.regularTime;
                 const ht=m.score?.halfTime;
-                // Lire le score depuis football-data.org
-                const hsNew=(ft?.home!==null&&ft?.home!==undefined)?ft.home
-                           :(ht?.home!==null&&ht?.home!==undefined)?ht.home:null;
-                const asNew=(ft?.away!==null&&ft?.away!==undefined)?ft.away
-                           :(ht?.away!==null&&ht?.away!==undefined)?ht.away:null;
+                const scoreH = (rt?.home!=null)?rt.home:(ft?.home!=null)?ft.home:(ht?.home!=null)?ht.home:null;
+                const scoreA = (rt?.away!=null)?rt.away:(ft?.away!=null)?ft.away:(ht?.away!=null)?ht.away:null;
+                const hsNew = scoreH;
+                const asNew = scoreA;
                 // NE JAMAIS écraser un score déjà présent par null
                 const hsFinal=hsNew!==null?hsNew:upd[idx].homeScore;
                 const asFinal=asNew!==null?asNew:upd[idx].awayScore;
+                // Ne jamais écraser un statut connu par null
+                const stFinal = st || upd[idx].status;
                 upd[idx]={...upd[idx],
                   apiMatchId:m.id,
                   homeScore:hsFinal,
                   awayScore:asFinal,
-                  status:st,
+                  status:stFinal,
                   elapsed:m.minute||null
                 };
               }
@@ -1070,9 +1075,9 @@ export default function App(){
                 <div style={{display:"flex",alignItems:"center",gap:3}}>
                   <Flag country="Canada" size={15}/><Flag country="États-Unis" size={15}/><Flag country="Mexique" size={15}/>
                 </div>
-                <div style={{display:"flex",alignItems:"center",gap:4,fontSize:10,color:apiOk?"#22c55e":"#f59e0b",background:"rgba(0,0,0,0.2)",padding:"3px 8px",borderRadius:14}}>
-                  <span style={{width:5,height:5,borderRadius:"50%",background:liveMatches>0?"#ef4444":apiOk?"#22c55e":"#f59e0b",display:"block",animation:`pulse ${liveMatches>0?"0.8s":"2s"} infinite`}}/>
-                  {liveMatches>0?`${liveMatches} LIVE`:apiOk?"Sync":"Local"}
+                <div style={{display:"flex",alignItems:"center",gap:4,fontSize:10,color:liveMatches>0?"#ef4444":"#22c55e",background:"rgba(0,0,0,0.2)",padding:"3px 8px",borderRadius:14}}>
+                  <span style={{width:5,height:5,borderRadius:"50%",background:liveMatches>0?"#ef4444":"#22c55e",display:"block",animation:`pulse ${liveMatches>0?"0.8s":"2s"} infinite`}}/>
+                  {liveMatches>0?`${liveMatches} LIVE`:"Live"}
                 </div>
               </div>
               <button className="burger-btn" onClick={()=>setMenuOpen(o=>!o)} style={{background:"rgba(99,179,237,0.08)",border:"1px solid rgba(99,179,237,0.2)",borderRadius:8,padding:"8px 10px",cursor:"pointer",display:"flex",flexDirection:"column",gap:5,alignItems:"center",justifyContent:"center"}}>
@@ -1117,7 +1122,7 @@ export default function App(){
             </div>
             {/* Footer du menu */}
             <div style={{padding:"16px 20px",borderTop:"1px solid rgba(99,179,237,0.08)"}}>
-              <div style={{display:"flex",alignItems:"center",gap:6,fontSize:10,color:apiOk?"#22c55e":"#f59e0b"}}>
+              <div style={{display:"flex",alignItems:"center",gap:6,fontSize:10,color:liveMatches>0?"#ef4444":"#22c55e"}}>
                 <span style={{width:6,height:6,borderRadius:"50%",background:apiOk?"#22c55e":"#f59e0b",display:"block"}}/>
                 {apiOk?"Données live":"Données locales"}
               </div>

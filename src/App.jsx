@@ -728,22 +728,14 @@ const TABS=[{id:"conf",label:"⚽ Confrontations"},{id:"poules",label:"📊 Poul
 
 // ─── CONFRONTATIONS ───────────────────────────────────────────────────────────
 function ConfTab({fixtures}){
-  const[filter,setFilter]=useState("all");
   const grouped={};
   fixtures.forEach(m=>{
-    const ok=filter==="all"||(filter==="france"&&(m.homeTeam==="France"||m.awayTeam==="France"))||(filter==="m6"&&M6.has(m.id))||(filter==="live"&&["1H","2H","HT"].includes(m.status));
-    if(!ok)return;if(!grouped[m.date])grouped[m.date]=[];grouped[m.date].push(m);
+    if(!grouped[m.date])grouped[m.date]=[];grouped[m.date].push(m);
   });
   return(<div>
     <div style={{fontSize:20,fontWeight:800,color:"#e2e8f0",marginBottom:4}}>Calendrier des matchs</div>
     <div style={{color:"#6b7280",fontSize:13,marginBottom:18}}>Heure française (Paris) · Mise à jour automatique toutes les 60s</div>
-    <div style={{display:"flex",gap:7,marginBottom:14,flexWrap:"wrap"}}>
-      {[["all","Tous"],["m6","📺 M6"],["live","🔴 Live"]].map(([id,lbl])=>(
-        <button key={id} onClick={()=>setFilter(id)} style={{display:"flex",alignItems:"center",gap:6,padding:"7px 16px",borderRadius:7,fontSize:13,fontWeight:600,cursor:"pointer",border:filter==="france"?"none":filter===id?"none":"1px solid rgba(99,179,237,0.15)",background:filter===id?"linear-gradient(135deg,#2563eb,#3b82f6)":"rgba(9,16,28,0.7)",color:filter===id?"#fff":"#9ca3af",fontFamily:"inherit",transition:"all .12s"}}>{lbl}</button>
-      ))}
-      <button onClick={()=>setFilter("france")} style={{display:"flex",alignItems:"center",gap:6,padding:"7px 14px",borderRadius:7,fontSize:13,fontWeight:600,cursor:"pointer",border:filter==="france"?"none":"1px solid rgba(99,179,237,0.15)",background:filter==="france"?"linear-gradient(135deg,#2563eb,#3b82f6)":"rgba(9,16,28,0.7)",color:filter==="france"?"#fff":"#9ca3af",fontFamily:"inherit",transition:"all .12s"}}><Flag country="France" size={18}/>France</button>
-    </div>
-    <div style={{background:"rgba(99,179,237,0.03)",border:"1px solid rgba(99,179,237,0.08)",borderRadius:9,padding:"9px 14px",marginBottom:18,fontSize:12,color:"#6b7280"}}>
+    <div style={S.infoBar}>
       📺 <strong style={{color:"#fb923c"}}>M6</strong> — Matchs France, grosses affiches, demi-finales et finale gratuits · <strong style={{color:"#63b3ed"}}>beIN Sports</strong> — 104 matchs intégralité
     </div>
     {Object.keys(grouped).sort().map(date=>{
@@ -761,11 +753,9 @@ function ConfTab({fixtures}){
         </div>
       </div>);
     })}
-    {!Object.keys(grouped).length&&<div style={{color:"#4b5563",textAlign:"center",padding:28,fontSize:14}}>Aucun match.</div>}
   </div>);
 }
 
-// ─── POULES — tableau sans superposition ─────────────────────────────────────
 function PoulesTab({fixtures}){
   const[sel,setSel]=useState("A");
   const std=getStandings(sel,fixtures);
